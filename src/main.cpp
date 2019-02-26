@@ -226,8 +226,12 @@ public:
         common(node);
 
         // geom
-        m_buffer.append(m_factory.create_point(node));
-        m_buffer += '\t';
+        if (node.location()) {
+            m_buffer.append(m_factory.create_point(node));
+            m_buffer += '\t';
+        } else {
+            m_buffer += "\\N\t";
+        }
 
         // nodes
         m_buffer += "\\N\t";
