@@ -36,7 +36,8 @@ CREATE TABLE osmdata (
     tags      JSONB,
     geom      GEOMETRY,
     way_nodes BIGINT[],
-    members   rel_member[]
+--    members   rel_member[]
+    members   JSONB
 );
 
 -- ---------------------------
@@ -197,7 +198,7 @@ class Handler : public osmium::handler::Handler {
         m_buffer += '\t';
     }
 
-    void members(const osmium::Relation& relation) {
+    void members_row(const osmium::Relation& relation) {
         m_buffer += '{';
         for (const auto& rm : relation.members()) {
             m_buffer += "\"(";
@@ -213,6 +214,28 @@ class Handler : public osmium::handler::Handler {
         } else {
             m_buffer += '}';
         }
+    }
+
+    void members_json(const osmium::Relation& relation) {
+        rapidjson::StringBuffer stream;
+        rapidjson::Writer<rapidjson::StringBuffer> writer{stream};
+
+        char buffer[2] = "x";
+        writer.StartArray();
+        for (const auto& rm : relation.members()) {
+            writer.StartObject();
+            writer.Key("type");
+            buffer[0] = osmium::item_type_to_char(rm.type());
+            writer.String(buffer);
+            writer.Key("ref");
+            writer.Int64(rm.ref());
+            writer.Key("role");
+            writer.String(rm.role());
+            writer.EndObject();
+        }
+        writer.EndArray();
+
+        append_pg_escaped(stream.GetString(), stream.GetSize());
     }
 
 public:
@@ -269,7 +292,7 @@ public:
         m_buffer += "\\N\t";
 
         // members
-        members(relation);
+        members_json(relation);
 
         finalize();
     }
