@@ -30,7 +30,8 @@ CREATE TABLE osmdata (
     version   INTEGER,
     visible   BOOL,
     changeset INTEGER,
-    tstamp    TIMESTAMP (0) WITH TIME ZONE,
+--    tstamp    TIMESTAMP (0) WITH TIME ZONE,
+    trange    TSTZRANGE,
     uid       INTEGER,
     username  TEXT,
     tags      JSONB,
@@ -42,7 +43,21 @@ CREATE TABLE osmdata (
 
 -- ---------------------------
 
-\copy osmdata from `data.pgcopy`
+UPDATE osmdata u SET trange = tstzrange(lower(u.trange), lower(f.trange))
+    FROM osmdata f
+    WHERE u.objtype = f.objtype AND u.id = f.id AND u.version + 1 = f.version;
+
+
+-- SELECT count(*) FROM osmdata WHERE upper(trange) IS NULL;
+-- SELECT count(*) FROM osmdata WHERE trange @> CAST('2016-01-01 00:00:00+00:00' AS TIMESTAMP WITH TIME ZONE);
+
+CREATE OR REPLACE VIEW osmdata_current
+    AS SELECT * FROM osmdata
+        WHERE upper(trange) IS NULL;
+
+-- ---------------------------
+
+\copy osmdata from 'data.pgcopy'
 
 -- ---------------------------
 
@@ -116,6 +131,8 @@ class Handler : public osmium::handler::Handler {
     osmium::geom::WKBFactory<> m_factory{osmium::geom::wkb_type::ewkb, osmium::geom::out_type::hex};
     std::string m_buffer;
 
+    bool m_with_time_range = false;
+
     void finalize() {
         m_buffer += '\n';
 
@@ -174,7 +191,14 @@ class Handler : public osmium::handler::Handler {
         m_buffer += '\t';
         m_buffer.append(std::to_string(object.changeset()));
         m_buffer += '\t';
-        m_buffer.append(object.timestamp().to_iso());
+        if (m_with_time_range) {
+            m_buffer += '[';
+            m_buffer.append(object.timestamp().to_iso());
+            m_buffer += ',';
+            m_buffer += ')';
+        } else {
+            m_buffer.append(object.timestamp().to_iso());
+        }
         m_buffer += '\t';
         m_buffer.append(std::to_string(object.uid()));
         m_buffer += '\t';
@@ -240,7 +264,8 @@ class Handler : public osmium::handler::Handler {
 
 public:
 
-    Handler() {
+    Handler(bool with_time_range) :
+        m_with_time_range(with_time_range) {
         m_buffer.reserve(1024 * 1024);
     }
 
@@ -307,7 +332,7 @@ int main(int argc, char* argv[]) {
 
     const std::string input_filename{argv[1]};
 
-    Handler handler;
+    Handler handler(true);
 
     osmium::io::Reader reader{input_filename};
 
