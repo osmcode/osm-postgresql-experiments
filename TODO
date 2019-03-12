@@ -1,0 +1,17 @@
+
+* quoting of non-jsonb members field
+* make sure there are no problems when there are no columns
+* tests for filename to tablename conversion
+* use {fmt}?
+* add "changeset" stream. changeset discussions?
+* timezones?
+* lat/lon as integers?
+* projected geometry?
+* objtype as enum instead of as char?
+
+CREATE TYPE rel_member AS (
+    objtype CHAR(1),
+    id      BIGINT,
+    role    TEXT
+);
+

@@ -1,345 +1,206 @@
 
-#include <osmium/geom/wkb.hpp>
-#include <osmium/handler.hpp>
-#include <osmium/io/any_input.hpp>
-#include <osmium/osm/item_type.hpp>
-#include <osmium/visitor.hpp>
+#include "options.hpp"
+#include "table.hpp"
 
-#ifndef RAPIDJSON_HAS_STDSTRING
-# define RAPIDJSON_HAS_STDSTRING 1
-#endif
-#include <rapidjson/writer.h>
-#include <rapidjson/stringbuffer.h>
+#include <osmium/handler.hpp>
+#include <osmium/diff_handler.hpp>
+#include <osmium/diff_visitor.hpp>
+#include <osmium/io/any_input.hpp>
+#include <osmium/visitor.hpp>
+#include <osmium/util/verbose_output.hpp>
+
+#include <boost/program_options.hpp>
+namespace po = boost::program_options;
 
 #include <iostream>
 #include <string>
+#include <utility>
+#include <vector>
 
-/*
+Options opts;
 
-CREATE TYPE rel_member AS (
-    objtype CHAR(1),
-    id      BIGINT,
-    role    TEXT
-);
+class Handler : public osmium::diff_handler::DiffHandler {
 
-DROP TABLE IF EXISTS osmdata CASCADE;
+    std::vector<std::unique_ptr<Table>>& m_tables;
 
-CREATE TABLE osmdata (
-    objtype   CHAR(1),
-    id        BIGINT,
-    version   INTEGER,
-    visible   BOOL,
-    changeset INTEGER,
---    tstamp    TIMESTAMP (0) WITH TIME ZONE,
-    trange    TSTZRANGE,
-    uid       INTEGER,
-    username  TEXT,
-    tags      JSONB,
-    geom      GEOMETRY,
-    way_nodes BIGINT[],
---    members   rel_member[]
-    members   JSONB
-);
-
--- ---------------------------
-
-UPDATE osmdata u SET trange = tstzrange(lower(u.trange), lower(f.trange))
-    FROM osmdata f
-    WHERE u.objtype = f.objtype AND u.id = f.id AND u.version + 1 = f.version;
-
-
--- SELECT count(*) FROM osmdata WHERE upper(trange) IS NULL;
--- SELECT count(*) FROM osmdata WHERE trange @> CAST('2016-01-01 00:00:00+00:00' AS TIMESTAMP WITH TIME ZONE);
-
-CREATE OR REPLACE VIEW osmdata_current
-    AS SELECT * FROM osmdata
-        WHERE upper(trange) IS NULL;
-
--- ---------------------------
-
-\copy osmdata from 'data.pgcopy'
-
--- ---------------------------
-
-
-CREATE OR REPLACE VIEW osmnodes
-    AS SELECT * FROM osmdata WHERE objtype ='n';
-
-CREATE OR REPLACE VIEW osmways
-    AS SELECT * FROM osmdata WHERE objtype ='w';
-
-CREATE OR REPLACE VIEW osmrelations
-    AS SELECT * FROM osmdata WHERE objtype ='r';
-
--- ---------------------------
-
-WITH nids AS (
-         SELECT unnest(way_nodes) AS nid, id AS wid FROM osmways wu
-     ),
-     wgeoms AS (
-         SELECT ST_MakeLine(n.geom) AS wgeom, i.wid FROM osmnodes n, nids i WHERE n.id = i.nid GROUP BY i.wid
-     )
-UPDATE osmdata w SET geom = wgeom
-    FROM wgeoms
-    WHERE objtype = 'w' AND wgeoms.wid =w.id;
-
--- ---------------------------
-
-DROP TABLE IF EXISTS nodes;
-
-CREATE TABLE nodes (
-    id        BIGINT PRIMARY KEY,
-    version   INTEGER,
-    visible   BOOL,
-    changeset INTEGER,
-    tstamp    TIMESTAMP (0) WITH TIME ZONE,
-    uid       INTEGER,
-    username  TEXT,
-    tags      JSONB,
-    geom      GEOMETRY(POINT, 4326)
-);
-
-INSERT INTO nodes
-    SELECT id, version, visible, changeset, tstamp, uid, username, tags, geom
-        FROM osmnodes WHERE tags != '{}';
-
--- ---------------------------
-
-DROP TABLE IF EXISTS ways;
-
-CREATE TABLE ways (
-    id        BIGINT PRIMARY KEY,
-    version   INTEGER,
-    visible   BOOL,
-    changeset INTEGER,
-    tstamp    TIMESTAMP (0) WITH TIME ZONE,
-    uid       INTEGER,
-    username  TEXT,
-    tags      JSONB,
-    geom      GEOMETRY(LINESTRING, 4326),
-    way_nodes BIGINT[]
-);
-
-INSERT INTO ways
-    SELECT id, version, visible, changeset, tstamp, uid, username, tags, geom, way_nodes
-        FROM osmways;
-
-*/
-
-class Handler : public osmium::handler::Handler {
-
-    osmium::geom::WKBFactory<> m_factory{osmium::geom::wkb_type::ewkb, osmium::geom::out_type::hex};
-    std::string m_buffer;
-
-    bool m_with_time_range = false;
-
-    void finalize() {
-        m_buffer += '\n';
-
-        if (m_buffer.size() > 1000 * 1024) {
-            std::cout << m_buffer;
-            m_buffer.resize(0);
+    void osm_object(const osmium::OSMObject& object, const osmium::Timestamp next_version_timestamp) {
+        if (opts.filter_with_tags && object.tags().empty()) {
+            return;
         }
-    }
-
-    void append_pg_escaped(const char* str, std::size_t size = std::numeric_limits<std::size_t>::max()) {
-        while (size-- > 0 && *str != '\0') {
-            switch (*str) {
-                case '\\':
-                    m_buffer += '\\';
-                    m_buffer += '\\';
-                    break;
-                case '\n':
-                    m_buffer += '\\';
-                    m_buffer += 'n';
-                    break;
-                case '\r':
-                    m_buffer += '\\';
-                    m_buffer += 'r';
-                    break;
-                case '\t':
-                    m_buffer += '\\';
-                    m_buffer += 't';
-                    break;
-                default:
-                    m_buffer += *str;
+        for (auto& table : m_tables) {
+            if (table->matches(object.type())) {
+                table->add_row(object, next_version_timestamp);
+                table->possible_flush();
             }
-            ++str;
         }
-    }
-
-    void add_tags(const osmium::OSMObject& object) {
-        rapidjson::StringBuffer stream;
-        rapidjson::Writer<rapidjson::StringBuffer> writer{stream};
-
-        writer.StartObject();
-        for (const auto& tag : object.tags()) {
-            writer.Key(tag.key());
-            writer.String(tag.value());
-        }
-        writer.EndObject();
-
-        append_pg_escaped(stream.GetString(), stream.GetSize());
-    }
-
-    void common(const osmium::OSMObject& object) {
-        m_buffer.append(std::to_string(object.id()));
-        m_buffer += '\t';
-        m_buffer.append(std::to_string(object.version()));
-        m_buffer += '\t';
-        m_buffer += object.visible() ? 't' : 'f';
-        m_buffer += '\t';
-        m_buffer.append(std::to_string(object.changeset()));
-        m_buffer += '\t';
-        if (m_with_time_range) {
-            m_buffer += '[';
-            m_buffer.append(object.timestamp().to_iso());
-            m_buffer += ',';
-            m_buffer += ')';
-        } else {
-            m_buffer.append(object.timestamp().to_iso());
-        }
-        m_buffer += '\t';
-        m_buffer.append(std::to_string(object.uid()));
-        m_buffer += '\t';
-        append_pg_escaped(object.user());
-        m_buffer += '\t';
-        add_tags(object);
-        m_buffer += '\t';
-    }
-
-    void way_nodes(const osmium::Way& way) {
-        m_buffer += '{';
-        for (const auto& nr : way.nodes()) {
-            m_buffer.append(std::to_string(nr.ref()));
-            m_buffer += ',';
-        }
-        if (m_buffer.back() == ',') {
-            m_buffer.back() = '}';
-        } else {
-            m_buffer += '}';
-        }
-        m_buffer += '\t';
-    }
-
-    void members_row(const osmium::Relation& relation) {
-        m_buffer += '{';
-        for (const auto& rm : relation.members()) {
-            m_buffer += "\"(";
-            m_buffer += osmium::item_type_to_char(rm.type());
-            m_buffer += ',';
-            m_buffer.append(std::to_string(rm.ref()));
-            m_buffer += ",\\\\\"";
-            append_pg_escaped(rm.role());
-            m_buffer += "\\\\\")\",";
-        }
-        if (m_buffer.back() == ',') {
-            m_buffer.back() = '}';
-        } else {
-            m_buffer += '}';
-        }
-    }
-
-    void members_json(const osmium::Relation& relation) {
-        rapidjson::StringBuffer stream;
-        rapidjson::Writer<rapidjson::StringBuffer> writer{stream};
-
-        char buffer[2] = "x";
-        writer.StartArray();
-        for (const auto& rm : relation.members()) {
-            writer.StartObject();
-            writer.Key("type");
-            buffer[0] = osmium::item_type_to_char(rm.type());
-            writer.String(buffer);
-            writer.Key("ref");
-            writer.Int64(rm.ref());
-            writer.Key("role");
-            writer.String(rm.role());
-            writer.EndObject();
-        }
-        writer.EndArray();
-
-        append_pg_escaped(stream.GetString(), stream.GetSize());
     }
 
 public:
 
-    Handler(bool with_time_range) :
-        m_with_time_range(with_time_range) {
-        m_buffer.reserve(1024 * 1024);
+    Handler(std::vector<std::unique_ptr<Table>>& tables) :
+        m_tables(tables) {
     }
 
-    void node(const osmium::Node& node) {
-        m_buffer += "n\t";
-        common(node);
-
-        // geom
-        if (node.location()) {
-            m_buffer.append(m_factory.create_point(node));
-            m_buffer += '\t';
-        } else {
-            m_buffer += "\\N\t";
+    void node(const osmium::DiffNode& dnode) {
+        osmium::Timestamp ts;
+        if (!dnode.last()) {
+            ts = dnode.next().timestamp();
         }
-
-        // nodes
-        m_buffer += "\\N\t";
-
-        // members
-        m_buffer += "\\N";
-
-        finalize();
+        osm_object(dnode.curr(), ts);
     }
 
-    void way(const osmium::Way& way) {
-        m_buffer += "w\t";
-        common(way);
-
-        // geom
-        m_buffer += "\\N\t";
-
-        // nodes
-        way_nodes(way);
-
-        // members
-        m_buffer += "\\N";
-
-        finalize();
+    void way(const osmium::DiffWay& dway) {
+        osmium::Timestamp ts;
+        if (!dway.last()) {
+            ts = dway.next().timestamp();
+        }
+        osm_object(dway.curr(), ts);
     }
 
-    void relation(const osmium::Relation& relation) {
-        m_buffer += "r\t";
-        common(relation);
-
-        // geom
-        m_buffer += "\\N\t";
-
-        // nodes
-        m_buffer += "\\N\t";
-
-        // members
-        members_json(relation);
-
-        finalize();
+    void relation(const osmium::DiffRelation& drelation) {
+        osmium::Timestamp ts;
+        if (!drelation.last()) {
+            ts = drelation.next().timestamp();
+        }
+        osm_object(drelation.curr(), ts);
     }
 
 }; // class Handler
 
+void parse_command_line(int argc, char* argv[], std::string& input_filename, std::vector<std::unique_ptr<Table>>& tables) {
+    po::options_description desc{"OPTIONS"};
+
+    desc.add_options()
+        ("filter,f", po::value<std::vector<std::string>>(), "Filter")
+        ("help,h", "Show usage help")
+        ("verbose,v", "Set verbose mode")
+        ("with-history,H", "With history")
+    ;
+
+    po::options_description hidden;
+    hidden.add_options()
+        ("input-filename", po::value<std::string>(), "Input file")
+        ("tables", po::value<std::vector<std::string>>(), "Output tables")
+    ;
+
+    po::positional_options_description positional;
+    positional.add("input-filename", 1);
+    positional.add("tables", -1);
+
+    po::options_description all;
+    all.add(desc).add(hidden);
+
+    po::variables_map vm;
+    po::store(po::command_line_parser(argc, argv).options(all).positional(positional).run(), vm);
+    po::notify(vm);
+
+    if (vm.count("help")) {
+        std::cout << "Usage: " << argv[0] << " [OPTIONS] OSMFILE OUTPUT-TABLE...\n\n";
+        std::cout << "OUTPUT-TABLE: Format: [FILENAME]=[STREAM]%[COLUMNS]\n";
+        std::cout << "  FILENAME - output filename (leave empty for STDOUT)\n";
+        std::cout << "  STREAM   - one of the following:\n";
+
+        print_streams();
+
+        std::cout << "  COLUMNS  - columns for this table (uses default when empty)\n";
+        std::cout << '\n';
+        std::cout << desc;
+        std::exit(0);
+    }
+
+    if (vm.count("verbose")) {
+        opts.verbose = true;
+    }
+
+    if (vm.count("with-history")) {
+        opts.with_history = true;
+    }
+
+    if (vm.count("filter")) {
+        const auto filter = vm["filter"].as<std::vector<std::string>>();
+        for (const auto& f : filter) {
+            if (f == "with-tags") {
+                opts.filter_with_tags = true;
+            } else {
+                std::cerr << "Warning! Unknown filter option: " << f << '\n';
+            }
+        }
+    }
+
+    if (vm.count("input-filename")) {
+        input_filename = vm["input-filename"].as<std::string>();
+    }
+
+    if (vm.count("tables")) {
+        for (const auto& table_config : vm["tables"].as<std::vector<std::string>>()) {
+            tables.emplace_back(create_table(opts, table_config));
+            tables.back()->sql_data_definition();
+        }
+    } else {
+        throw std::runtime_error{"No output tables found"};
+    }
+}
+
 int main(int argc, char* argv[]) {
-    if (argc != 2) {
-        std::cout << "Usage: " << argv[0] << " INFILE\n";
-        std::exit(1);
+    std::vector<std::unique_ptr<Table>> tables;
+    std::string input_filename{"-"};
+
+    try {
+        parse_command_line(argc, argv, input_filename, tables);
+    } catch (const boost::program_options::error& e) {
+        std::cerr << "Error parsing command line: " << e.what() << '\n';
+        return 2;
+    } catch (const std::exception& e) {
+        std::cerr << e.what() << '\n';
+        return 2;
     }
 
-    const std::string input_filename{argv[1]};
+    osmium::VerboseOutput vout{opts.verbose};
 
-    Handler handler(true);
+    vout << "Options:\n";
+    vout << "  With history: " << (opts.with_history ? "yes" : "no") << '\n';
 
-    osmium::io::Reader reader{input_filename};
+    vout << "Filter:\n";
+    vout << "  With tags: " << (opts.filter_with_tags ? "yes" : "no") << '\n';
 
-    while (osmium::memory::Buffer buffer = reader.read()) {
-        osmium::apply(buffer, handler);
+    vout << "Tables:\n";
+
+    osmium::osm_entity_bits::type read_entities = osmium::osm_entity_bits::nothing;
+    for (const auto& table : tables) {
+        read_entities |= table->read_entities();
+        vout << "  " << table->name() << ":\n";
+        vout << "    filename: " << table->filename()       << '\n';
+        vout << "    stream:   " << table->stream_name()    << '\n';
+        vout << "    columns:  " << table->columns_string() << '\n';
     }
+
+    // Normally a "users" table is only filled with the users seen in the
+    // other tables that are specified. But if the "users" table is the only
+    // one, we export all users.
+    if (tables.size() == 1 && dynamic_cast<UsersTable*>(tables.front().get())) {
+        read_entities = osmium::osm_entity_bits::all;
+    }
+
+    if (read_entities == osmium::osm_entity_bits::nothing) {
+        throw std::runtime_error{"nothing to do"};
+    }
+
+    vout << "Reading entities: " << list_entities(read_entities) << '\n';
+
+    vout << "Transforming data...\n";
+
+    osmium::io::Reader reader{input_filename, read_entities};
+
+    Handler handler(tables);
+    osmium::apply_diff(reader, handler);
 
     reader.close();
+
+    for (auto& table : tables) {
+        table->flush();
+        table->close();
+    }
+
+    vout << "Done.\n";
 }
 
