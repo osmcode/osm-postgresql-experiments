@@ -109,23 +109,21 @@ Table::Table(const std::string& filename, const stream_config_type& stream_confi
     m_columns_string(columns_string),
     m_stream_config(&stream_config) {
 
-    const auto last_slash = m_filename.find_last_of('/');
-    if (last_slash == std::string::npos) {
-        m_name =  m_filename;
-    } else {
-        m_path = m_filename.substr(0, last_slash);
-        m_name =  m_filename.substr(last_slash + 1);
-    }
-    const auto first_dot = m_name.find_first_of('.');
-    if (first_dot != std::string::npos) {
-        m_name = m_name.substr(0, first_dot);
-    }
-
-    if (m_filename == "") {
+    if (m_filename == "") { // no name means STDOUT
         m_name = m_stream_config->name;
         m_fd = 1;
     } else {
-        if (m_filename.find_first_of('.') == std::string::npos) {
+        const auto last_slash = m_filename.find_last_of('/');
+        if (last_slash == std::string::npos) {
+            m_name =  m_filename;
+        } else {
+            m_path = m_filename.substr(0, last_slash);
+            m_name =  m_filename.substr(last_slash + 1);
+        }
+        const auto first_dot = m_name.find_first_of('.');
+        if (first_dot != std::string::npos) {
+            m_name = m_name.substr(0, first_dot);
+        } else {
             m_filename += ".pgcopy";
         }
 
@@ -216,7 +214,8 @@ void Table::sql_data_definition() const {
 
     sql += '\n';
 
-    std::ofstream sqlfile{m_path + m_name + ".sql"};
+    std::ofstream sqlfile{m_path + "/" + m_name + ".sql"};
+    sqlfile.exceptions(~std::ofstream::goodbit);
     sqlfile << sql;
 }
 
