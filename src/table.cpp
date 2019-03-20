@@ -204,6 +204,10 @@ void Table::sql_data_definition() const {
     sql += m_filename;
     sql += "'\n\n";
 
+    sql += "ANALYZE \"";
+    sql += m_name;
+    sql += "\";\n\n";
+
     if (opts.with_primary_key) {
         sql += sql_primary_key();
     }
