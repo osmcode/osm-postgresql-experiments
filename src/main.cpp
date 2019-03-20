@@ -194,12 +194,12 @@ int main(int argc, char* argv[]) {
     osmium::VerboseOutput vout{opts.verbose};
 
     vout << "Options:\n";
-    vout << "  With history: " << (opts.with_history ? "yes" : "no") << '\n';
-    vout << "  Use diff handler: " << (opts.use_diff_handler ? "yes" : "no") << '\n';
-    vout << "  Use location index: " << (opts.use_location_handler ? "yes" : "no") << '\n';
+    vout << "  With history: " << yes_no(opts.with_history);
+    vout << "  Use diff handler: " << yes_no(opts.use_diff_handler);
+    vout << "  Use location index: " << yes_no(opts.use_location_handler);
 
     vout << "Filter:\n";
-    vout << "  With tags: " << (opts.filter_with_tags ? "yes" : "no") << '\n';
+    vout << "  With tags: " << yes_no(opts.filter_with_tags);
 
     vout << "Tables:\n";
 

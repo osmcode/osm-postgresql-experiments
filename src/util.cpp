@@ -80,3 +80,7 @@ std::string list_entities(const osmium::osm_entity_bits::type entities) {
     return output;
 }
 
+const char* yes_no(const bool choice) noexcept {
+    return choice ? "yes\n" : "no\n";
+}
+

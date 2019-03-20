@@ -18,5 +18,7 @@ std::pair<std::string, std::string> split(const std::string& input, char delimit
 void append_pg_escaped(std::string& buffer, const char* str, std::size_t size);
 void append_pg_escaped(std::string& buffer, const char* str);
 
-std::string list_entities(const osmium::osm_entity_bits::type entities);
+std::string list_entities(osmium::osm_entity_bits::type entities);
+
+const char* yes_no(bool choice) noexcept;
 
