@@ -2,12 +2,15 @@
 #include "options.hpp"
 #include "table.hpp"
 
-#include <osmium/handler.hpp>
 #include <osmium/diff_handler.hpp>
 #include <osmium/diff_visitor.hpp>
+#include <osmium/handler.hpp>
+#include <osmium/handler/node_locations_for_ways.hpp>
+#include <osmium/index/map/flex_mem.hpp>
+#include <osmium/index/node_locations_map.hpp>
 #include <osmium/io/any_input.hpp>
-#include <osmium/visitor.hpp>
 #include <osmium/util/verbose_output.hpp>
+#include <osmium/visitor.hpp>
 
 #include <boost/program_options.hpp>
 namespace po = boost::program_options;
@@ -19,7 +22,31 @@ namespace po = boost::program_options;
 
 Options opts;
 
-class Handler : public osmium::diff_handler::DiffHandler {
+class Handler : public osmium::handler::Handler {
+
+    std::vector<std::unique_ptr<Table>>& m_tables;
+
+public:
+
+    Handler(std::vector<std::unique_ptr<Table>>& tables) :
+        m_tables(tables) {
+    }
+
+    void osm_object(const osmium::OSMObject& object) {
+        if (opts.filter_with_tags && object.tags().empty()) {
+            return;
+        }
+        for (auto& table : m_tables) {
+            if (table->matches(object.type())) {
+                table->add_row(object, osmium::Timestamp{});
+                table->possible_flush();
+            }
+        }
+    }
+
+}; // class Handler
+
+class DiffHandler : public osmium::diff_handler::DiffHandler {
 
     std::vector<std::unique_ptr<Table>>& m_tables;
 
@@ -37,7 +64,7 @@ class Handler : public osmium::diff_handler::DiffHandler {
 
 public:
 
-    Handler(std::vector<std::unique_ptr<Table>>& tables) :
+    DiffHandler(std::vector<std::unique_ptr<Table>>& tables) :
         m_tables(tables) {
     }
 
@@ -65,7 +92,7 @@ public:
         osm_object(drelation.curr(), ts);
     }
 
-}; // class Handler
+}; // class DiffHandler
 
 void parse_command_line(int argc, char* argv[], std::string& input_filename, std::vector<std::unique_ptr<Table>>& tables) {
     po::options_description desc{"OPTIONS"};
@@ -135,6 +162,15 @@ void parse_command_line(int argc, char* argv[], std::string& input_filename, std
         for (const auto& table_config : vm["tables"].as<std::vector<std::string>>()) {
             tables.emplace_back(create_table(opts, table_config));
             tables.back()->sql_data_definition();
+            if (tables.back()->column_flags() & sql_column_config_flags::location_store) {
+                opts.use_location_handler = true;
+            }
+            if (tables.back()->column_flags() & sql_column_config_flags::time_range) {
+                opts.use_diff_handler = true;
+            }
+            if (opts.use_location_handler && opts.use_diff_handler) {
+                throw std::runtime_error{"Can't use time ranges and geometries together"};
+            }
         }
     } else {
         throw std::runtime_error{"No output tables found"};
@@ -159,6 +195,8 @@ int main(int argc, char* argv[]) {
 
     vout << "Options:\n";
     vout << "  With history: " << (opts.with_history ? "yes" : "no") << '\n';
+    vout << "  Use diff handler: " << (opts.use_diff_handler ? "yes" : "no") << '\n';
+    vout << "  Use location index: " << (opts.use_location_handler ? "yes" : "no") << '\n';
 
     vout << "Filter:\n";
     vout << "  With tags: " << (opts.filter_with_tags ? "yes" : "no") << '\n';
@@ -191,8 +229,21 @@ int main(int argc, char* argv[]) {
 
     osmium::io::Reader reader{input_filename, read_entities};
 
-    Handler handler(tables);
-    osmium::apply_diff(reader, handler);
+    if (opts.use_diff_handler) {
+        DiffHandler handler{tables};
+        osmium::apply_diff(reader, handler);
+    } else {
+        Handler handler{tables};
+        if (opts.use_location_handler) {
+            using index_type = osmium::index::map::FlexMem<osmium::unsigned_object_id_type, osmium::Location>;
+            using location_handler_type = osmium::handler::NodeLocationsForWays<index_type>;
+            index_type index;
+            location_handler_type location_handler{index};
+            osmium::apply(reader, location_handler, handler);
+        } else {
+            osmium::apply(reader, handler);
+        }
+    }
 
     reader.close();
 

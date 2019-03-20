@@ -76,8 +76,10 @@ enum class column_type {
 }; // enum class column_type
 
 enum sql_column_config_flags {
-    none = 0,
-    geom_index
+    none           = 0,
+    geom_index     = 1,
+    location_store = 2,
+    time_range     = 4
 };
 
 struct column_config_type {
@@ -141,6 +143,10 @@ public:
 
     const std::string& columns_string() const noexcept {
         return m_columns_string;
+    }
+
+    sql_column_config_flags column_flags() const noexcept {
+        return m_column_flags;
     }
 
     void flush();

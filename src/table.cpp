@@ -31,7 +31,7 @@ static const std::vector<column_config_type> column_config{
     {"c.", cft::changeset,       "changeset", "INTEGER NOT NULL",                          {}},
     {"t.", cft::timestamp_iso,   "created",   "TIMESTAMP (0) WITHOUT TIME ZONE",           {}},
     {"tu", cft::timestamp_sec,   "created",   "INTEGER",                                   {}},
-    {"tr", cft::timestamp_range, "trange",    "TSTZRANGE",                                 {}},
+    {"tr", cft::timestamp_range, "trange",    "TSTZRANGE",                                 time_range},
     {"i.", cft::uid,             "uid",       "INTEGER",                                   {}},
     {"u.", cft::user,            "username",  "TEXT",                                      {}},
 
@@ -60,8 +60,8 @@ static const std::vector<column_config_type> column_config{
 
     {"G.", cft::geometry,            "geom",  "GEOMETRY",                          geom_index},
     {"Gp", cft::geometry_point,      "geom",  "GEOMETRY(POINT, 4326)",             geom_index},
-    {"Gl", cft::geometry_linestring, "geom",  "GEOMETRY(LINESTRING, 4326)",        geom_index},
-    {"GP", cft::geometry_polygon,    "geom",  "GEOMETRY(MULTIPOLYGON, 4326)",      geom_index},
+    {"Gl", cft::geometry_linestring, "geom",  "GEOMETRY(LINESTRING, 4326)",        sql_column_config_flags(geom_index | location_store)},
+    {"GP", cft::geometry_polygon,    "geom",  "GEOMETRY(MULTIPOLYGON, 4326)",      sql_column_config_flags(geom_index | location_store)},
 };
 
 void print_streams() {
@@ -301,8 +301,21 @@ void ObjectsTable::add_row(const osmium::OSMObject& object, const osmium::Timest
                 }
                 break;
             case column_type::geometry:
+                /* fallthrough */
+            case column_type::geometry_point:
                 if (object.type() == osmium::item_type::node && static_cast<const osmium::Node&>(object).location()) {
                     m_buffer.append(m_factory.create_point(static_cast<const osmium::Node&>(object)));
+                } else {
+                    m_buffer += "\\N";
+                }
+                break;
+            case column_type::geometry_linestring:
+                if (object.type() == osmium::item_type::way) {
+                    try {
+                        m_buffer.append(m_factory.create_linestring(static_cast<const osmium::Way&>(object)));
+                    } catch (const osmium::geometry_error&) {
+                        m_buffer += "\\N";
+                    }
                 } else {
                     m_buffer += "\\N";
                 }
