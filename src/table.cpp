@@ -179,6 +179,7 @@ std::string Table::sql_primary_key() const {
 void Table::sql_data_definition() const {
     std::string sql;
 
+    sql += "\\timing\n\n";
     sql += "DROP TABLE IF EXISTS \"";
     sql += m_name;
     sql += "\" CASCADE;\n\n";
