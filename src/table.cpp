@@ -54,6 +54,7 @@ static const std::vector<column_config_type> column_config{
 
     {"N.", cft::nodes_array,     "nodes",     "BIGINT[]",          {}},
     {"Ns", cft::node_seq,        "seq_no",    "INT NOT NULL",      {}},
+    {"NS", cft::node_seq,        "seq_no",    "BIGINT NOT NULL",   {}},
     {"Ni", cft::node_ref,        "ref",       "BIGINT NOT NULL",   {}},
 
     {"M.", cft::members_jsonb,   "members",   "JSONB",                                     {}},
