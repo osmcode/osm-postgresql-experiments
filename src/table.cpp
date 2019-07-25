@@ -115,6 +115,7 @@ Table::Table(const std::string& filename, const stream_config_type& stream_confi
     } else {
         const auto last_slash = m_filename.find_last_of('/');
         if (last_slash == std::string::npos) {
+            m_path = ".";
             m_name =  m_filename;
         } else {
             m_path = m_filename.substr(0, last_slash);
@@ -219,9 +220,15 @@ void Table::sql_data_definition() const {
 
     sql += '\n';
 
-    std::ofstream sqlfile{m_path + "/" + m_name + ".sql"};
-    sqlfile.exceptions(~std::ofstream::goodbit);
-    sqlfile << sql;
+    std::string sqlfilename{m_path + "/" + m_name + ".sql"};
+    try {
+        std::ofstream sqlfile{sqlfilename};
+        sqlfile.exceptions(~std::ofstream::goodbit);
+        sqlfile << sql;
+    } catch (const std::runtime_error& e) {
+        std::cerr << "Error writing to file '" << sqlfilename << "'\n";
+        throw;
+    }
 }
 
 void ObjectsTable::add_row(const osmium::OSMObject& object, const osmium::Timestamp next_version_timestamp) {
