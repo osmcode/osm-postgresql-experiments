@@ -44,8 +44,10 @@ static const std::vector<column_config_type> column_config{
     {"Tv", cft::tag_value,       "value",     "TEXT NOT NULL",     {}},
     {"T=", cft::tag_kv,          "tag",       "TEXT NOT NULL",     {}},
 
-    {"x.", cft::lon,             "lon",       "REAL",              {}},
-    {"y.", cft::lat,             "lat",       "REAL",              {}},
+    {"x.", cft::lon_real,        "lon",       "REAL",              {}},
+    {"xi", cft::lon_int,         "lon",       "INTEGER",           {}},
+    {"y.", cft::lat_real,        "lat",       "REAL",              {}},
+    {"yi", cft::lat_int,         "lat",       "INTEGER",           {}},
 
     {"N.", cft::nodes_array,     "nodes",     "BIGINT[]",          {}},
     {"Ns", cft::node_seq,        "seq_no",    "INT NOT NULL",      {}},
@@ -232,6 +234,17 @@ void Table::sql_data_definition() const {
     }
 }
 
+template <typename TFunc>
+void append_coordinate(const osmium::OSMObject& object, std::string& buffer, TFunc&& func) {
+    if (object.type() != osmium::item_type::node || !static_cast<const osmium::Node&>(object).location()) {
+        buffer += "\\N";
+        return;
+    }
+
+    const auto location = static_cast<const osmium::Node&>(object).location();
+    buffer.append(std::forward<TFunc>(func)(location));
+}
+
 void ObjectsTable::add_row(const osmium::OSMObject& object, const osmium::Timestamp next_version_timestamp) {
     for (const auto& column : m_columns) {
         switch (column.format) {
@@ -279,19 +292,17 @@ void ObjectsTable::add_row(const osmium::OSMObject& object, const osmium::Timest
             case column_type::tags_json:
                 add_tags_json(m_buffer, object.tags());
                 break;
-            case column_type::lon:
-                if (object.type() == osmium::item_type::node && static_cast<const osmium::Node&>(object).location()) {
-                    m_buffer.append(std::to_string(static_cast<const osmium::Node&>(object).location().lon()));
-                } else {
-                    m_buffer += "\\N";
-                }
+            case column_type::lon_real:
+                append_coordinate(object, m_buffer, [](osmium::Location location) -> std::string { return std::to_string(location.lon()); });
                 break;
-            case column_type::lat:
-                if (object.type() == osmium::item_type::node && static_cast<const osmium::Node&>(object).location()) {
-                    m_buffer.append(std::to_string(static_cast<const osmium::Node&>(object).location().lat()));
-                } else {
-                    m_buffer += "\\N";
-                }
+            case column_type::lon_int:
+                append_coordinate(object, m_buffer, [](osmium::Location location) -> std::string { return std::to_string(location.x()); });
+                break;
+            case column_type::lat_real:
+                append_coordinate(object, m_buffer, [](osmium::Location location) -> std::string { return std::to_string(location.lat()); });
+                break;
+            case column_type::lat_int:
+                append_coordinate(object, m_buffer, [](osmium::Location location) -> std::string { return std::to_string(location.y()); });
                 break;
             case column_type::nodes_array:
                 if (object.type() == osmium::item_type::way) {
@@ -395,19 +406,17 @@ void TagsTable::add_row(const osmium::OSMObject& object, const osmium::Timestamp
                     m_buffer += '=';
                     m_buffer.append(tag.value());
                     break;
-                case column_type::lon:
-                    if (object.type() == osmium::item_type::node && static_cast<const osmium::Node&>(object).location()) {
-                        m_buffer.append(std::to_string(static_cast<const osmium::Node&>(object).location().lon()));
-                    } else {
-                        m_buffer += "\\N";
-                    }
+                case column_type::lon_real:
+                    append_coordinate(object, m_buffer, [](osmium::Location location) -> std::string { return std::to_string(location.lon()); });
                     break;
-                case column_type::lat:
-                    if (object.type() == osmium::item_type::node && static_cast<const osmium::Node&>(object).location()) {
-                        m_buffer.append(std::to_string(static_cast<const osmium::Node&>(object).location().lat()));
-                    } else {
-                        m_buffer += "\\N";
-                    }
+                case column_type::lon_int:
+                    append_coordinate(object, m_buffer, [](osmium::Location location) -> std::string { return std::to_string(location.x()); });
+                    break;
+                case column_type::lat_real:
+                    append_coordinate(object, m_buffer, [](osmium::Location location) -> std::string { return std::to_string(location.lat()); });
+                    break;
+                case column_type::lat_int:
+                    append_coordinate(object, m_buffer, [](osmium::Location location) -> std::string { return std::to_string(location.y()); });
                     break;
                 default:
                     break;
@@ -464,19 +473,17 @@ void WayNodesTable::add_row(const osmium::OSMObject& object, const osmium::Times
                 case column_type::user:
                     append_pg_escaped(m_buffer, object.user());
                     break;
-                case column_type::lon:
-                    if (object.type() == osmium::item_type::node && static_cast<const osmium::Node&>(object).location()) {
-                        m_buffer.append(std::to_string(static_cast<const osmium::Node&>(object).location().lon()));
-                    } else {
-                        m_buffer += "\\N";
-                    }
+                case column_type::lon_real:
+                    append_coordinate(object, m_buffer, [](osmium::Location location) -> std::string { return std::to_string(location.lon()); });
                     break;
-                case column_type::lat:
-                    if (object.type() == osmium::item_type::node && static_cast<const osmium::Node&>(object).location()) {
-                        m_buffer.append(std::to_string(static_cast<const osmium::Node&>(object).location().lat()));
-                    } else {
-                        m_buffer += "\\N";
-                    }
+                case column_type::lon_int:
+                    append_coordinate(object, m_buffer, [](osmium::Location location) -> std::string { return std::to_string(location.x()); });
+                    break;
+                case column_type::lat_real:
+                    append_coordinate(object, m_buffer, [](osmium::Location location) -> std::string { return std::to_string(location.lat()); });
+                    break;
+                case column_type::lat_int:
+                    append_coordinate(object, m_buffer, [](osmium::Location location) -> std::string { return std::to_string(location.y()); });
                     break;
                 case column_type::node_seq:
                     m_buffer.append(std::to_string(n));
@@ -539,19 +546,17 @@ void MembersTable::add_row(const osmium::OSMObject& object, const osmium::Timest
                 case column_type::user:
                     append_pg_escaped(m_buffer, object.user());
                     break;
-                case column_type::lon:
-                    if (object.type() == osmium::item_type::node && static_cast<const osmium::Node&>(object).location()) {
-                        m_buffer.append(std::to_string(static_cast<const osmium::Node&>(object).location().lon()));
-                    } else {
-                        m_buffer += "\\N";
-                    }
+                case column_type::lon_real:
+                    append_coordinate(object, m_buffer, [](osmium::Location location) -> std::string { return std::to_string(location.lon()); });
                     break;
-                case column_type::lat:
-                    if (object.type() == osmium::item_type::node && static_cast<const osmium::Node&>(object).location()) {
-                        m_buffer.append(std::to_string(static_cast<const osmium::Node&>(object).location().lat()));
-                    } else {
-                        m_buffer += "\\N";
-                    }
+                case column_type::lon_int:
+                    append_coordinate(object, m_buffer, [](osmium::Location location) -> std::string { return std::to_string(location.x()); });
+                    break;
+                case column_type::lat_real:
+                    append_coordinate(object, m_buffer, [](osmium::Location location) -> std::string { return std::to_string(location.lat()); });
+                    break;
+                case column_type::lat_int:
+                    append_coordinate(object, m_buffer, [](osmium::Location location) -> std::string { return std::to_string(location.y()); });
                     break;
                 case column_type::member_seq:
                     m_buffer += std::to_string(n);
