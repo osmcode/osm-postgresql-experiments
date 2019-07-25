@@ -181,7 +181,9 @@ std::string Table::sql_primary_key() const {
 
     sql += "-- ALTER TABLE \"";
     sql += m_name;
-    sql += "\" ADD PRIMARY KEY(" + primary_keys + ");\n";
+    sql += "\" ADD PRIMARY KEY(" + primary_keys + "); -- %PK:";
+    sql += m_name;
+    sql += "%\n";
 
     return sql;
 }
@@ -203,11 +205,18 @@ void Table::sql_data_definition() const {
         sql += column.sql_name;
         sql += "\" ";
         sql += column.sql_type;
-        sql += ",\n";
+        sql += ", -- %COL:";
+        sql += m_name;
+        sql += ":";
+        sql += column.sql_name;
+        sql += "%\n";
     }
 
-    sql.resize(sql.size() - 2);
-    sql += "\n);\n\n";
+    const auto pos = sql.find_last_of(',');
+    if (pos != std::string::npos) {
+        sql.erase(pos, 1);
+    }
+    sql += ");\n\n";
 
     sql += "\\copy \"";
     sql += m_name;
@@ -224,7 +233,7 @@ void Table::sql_data_definition() const {
     }
 
     if (m_column_flags & sql_column_config_flags::geom_index) {
-        sql += "-- CREATE INDEX \"" + m_name + "_geom_idx\" ON \"" + m_name + "\" USING GIST (geom);\n";
+        sql += "-- CREATE INDEX \"" + m_name + "_geom_idx\" ON \"" + m_name + "\" USING GIST (geom); -- %GIDX:" + m_name + ":geom%\n";
     }
 
     sql += '\n';
@@ -629,7 +638,9 @@ std::string UsersTable::sql_primary_key() const {
 
     sql += "-- ALTER TABLE \"";
     sql += name();
-    sql += "\" ADD PRIMARY KEY(uid);\n";
+    sql += "\" ADD PRIMARY KEY(uid); -- %PK:";
+    sql += name();
+    sql += ".uid%\n";
 
     return sql;
 }
