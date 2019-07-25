@@ -193,9 +193,9 @@ void Table::sql_data_definition() const {
     sql += "\" (\n";
 
     for (const auto column : m_columns) {
-        sql += "    ";
+        sql += "    \"";
         sql += column.sql_name;
-        sql += ' ';
+        sql += "\" ";
         sql += column.sql_type;
         sql += ",\n";
     }
