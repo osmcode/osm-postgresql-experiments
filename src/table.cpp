@@ -66,6 +66,8 @@ static const std::vector<column_config_type> column_config{
     {"Gp", cft::geometry_point,      "geom",  "GEOMETRY(POINT, 4326)",             geom_index},
     {"Gl", cft::geometry_linestring, "geom",  "GEOMETRY(LINESTRING, 4326)",        sql_column_config_flags(geom_index | location_store)},
     {"GP", cft::geometry_polygon,    "geom",  "GEOMETRY(MULTIPOLYGON, 4326)",      sql_column_config_flags(geom_index | location_store)},
+
+    {"r.", cft::redaction,           "redaction_id", "INTEGER", {}}
 };
 
 void print_streams() {
@@ -341,6 +343,9 @@ void ObjectsTable::add_row(const osmium::OSMObject& object, const osmium::Timest
                     m_buffer += "\\N";
                 }
                 break;
+            case column_type::redaction:
+                m_buffer += "\\N";
+                break;
             default:
                 break;
         }
@@ -419,6 +424,9 @@ void TagsTable::add_row(const osmium::OSMObject& object, const osmium::Timestamp
                 case column_type::lat_int:
                     append_coordinate(object, m_buffer, [](osmium::Location location) -> std::string { return std::to_string(location.y()); });
                     break;
+                case column_type::redaction:
+                    m_buffer += "\\N";
+                    break;
                 default:
                     break;
             }
@@ -491,6 +499,9 @@ void WayNodesTable::add_row(const osmium::OSMObject& object, const osmium::Times
                     break;
                 case column_type::node_ref:
                     m_buffer.append(std::to_string(nr.ref()));
+                    break;
+                case column_type::redaction:
+                    m_buffer += "\\N";
                     break;
                 default:
                     break;
@@ -570,6 +581,9 @@ void MembersTable::add_row(const osmium::OSMObject& object, const osmium::Timest
                     break;
                 case column_type::member_role:
                     m_buffer += member.role();
+                    break;
+                case column_type::redaction:
+                    m_buffer += "\\N";
                     break;
                 default:
                     break;

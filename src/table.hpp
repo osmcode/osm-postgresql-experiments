@@ -74,6 +74,7 @@ enum class column_type {
     geometry_point,
     geometry_linestring,
     geometry_polygon,
+    redaction,
 
 }; // enum class column_type
 
