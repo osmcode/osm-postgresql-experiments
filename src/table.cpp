@@ -26,6 +26,7 @@ static const std::vector<column_config_type> column_config{
     {"o.", cft::objtype,         "objtype",   "CHAR(1) CHECK(objtype IN ('n', 'w', 'r'))", {}},
     {"I.", cft::id,              "id",        "BIGINT NOT NULL",                           {}},
     {"v.", cft::version,         "version",   "INTEGER NOT NULL",                          {}},
+    {"vI", cft::version,         "version",   "BIGINT NOT NULL",                           {}},
     {"d.", cft::deleted,         "deleted",   "BOOL NOT NULL",                             {}},
     {"d!", cft::visible,         "visible",   "BOOL NOT NULL",                             {}},
     {"c.", cft::changeset,       "changeset", "INTEGER NOT NULL",                          {}},
