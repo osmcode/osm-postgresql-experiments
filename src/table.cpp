@@ -3,6 +3,7 @@
 #include "table.hpp"
 
 #include <iostream>
+#include <math.h>
 
 extern Options opts;
 
@@ -49,6 +50,7 @@ static const std::vector<column_config_type> column_config{
     {"xi", cft::lon_int,         "lon",       "INTEGER",           {}},
     {"y.", cft::lat_real,        "lat",       "REAL",              {}},
     {"yi", cft::lat_int,         "lat",       "INTEGER",           {}},
+    {"q.", cft::tile,            "tile",      "BIGINT",            {}},
 
     {"N.", cft::nodes_array,     "nodes",     "BIGINT[]",          {}},
     {"Ns", cft::node_seq,        "seq_no",    "INT NOT NULL",      {}},
@@ -248,6 +250,29 @@ void append_coordinate(const osmium::OSMObject& object, std::string& buffer, TFu
     buffer.append(std::forward<TFunc>(func)(location));
 }
 
+static inline unsigned int lon2x(double lon) noexcept {
+   return std::round((lon + 180.0) * 65535.0 / 360.0);
+}
+
+static inline unsigned int lat2y(double lat) noexcept {
+   return std::round((lat + 90.0) * 65535.0 / 180.0);
+}
+
+static inline unsigned int xy2tile(unsigned int x, unsigned int y) noexcept {
+   unsigned int tile = 0;
+
+   for (int i = 15; i >= 0; --i) {
+      tile = (tile << 1u) | ((x >> i) & 1u);
+      tile = (tile << 1u) | ((y >> i) & 1u);
+   }
+
+   return tile;
+}
+
+static inline unsigned int quadtile(const osmium::Location location) noexcept {
+    return xy2tile(lon2x(location.lon()), lat2y(location.lat()));
+}
+
 void ObjectsTable::add_row(const osmium::OSMObject& object, const osmium::Timestamp next_version_timestamp) {
     for (const auto& column : m_columns) {
         switch (column.format) {
@@ -306,6 +331,9 @@ void ObjectsTable::add_row(const osmium::OSMObject& object, const osmium::Timest
                 break;
             case column_type::lat_int:
                 append_coordinate(object, m_buffer, [](osmium::Location location) -> std::string { return std::to_string(location.y()); });
+                break;
+            case column_type::tile:
+                append_coordinate(object, m_buffer, [](osmium::Location location) -> std::string { return std::to_string(quadtile(location)); });
                 break;
             case column_type::nodes_array:
                 if (object.type() == osmium::item_type::way) {
