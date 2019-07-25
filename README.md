@@ -25,7 +25,7 @@ output table is specified using the format `FILENAME=STREAM%COLUMNS`. The
 is used. A file with suffix `.sql` is also written containing the data
 definitions used.
 
-The `STREAM` defines what kind of data should be written into the tabe. It can
+The `STREAM` defines what kind of data should be written into the table. It can
 be one of the following:
 
 * o: objects (nodes, ways, and relations)
@@ -68,6 +68,5 @@ See the file LICENSE.txt for the complete text of the license.
 ## Authors
 
 This program was written and is maintained by Jochen Topf (jochen@topf.org).
-
 
 
