@@ -57,18 +57,19 @@ static const std::vector<column_config_type> column_config{
     {"NS", cft::node_seq,        "seq_no",    "BIGINT NOT NULL",   {}},
     {"Ni", cft::node_ref,        "ref",       "BIGINT NOT NULL",   {}},
 
-    {"M.", cft::members_jsonb,   "members",   "JSONB",                                     {}},
-    {"Mj", cft::members_jsonb,   "members",   "JSONB",                                     {}},
-    {"MJ", cft::members_json,    "members",   "JSON",                                      {}},
-    {"Ms", cft::member_seq,      "seq_no",    "INTEGER NOT NULL",                          {}},
-    {"Mo", cft::member_type,     "objtype",   "CHAR(1) CHECK(objtype IN ('n', 'w', 'r'))", {}},
-    {"Mi", cft::member_ref,      "ref",       "BIGINT NOT NULL",                           {}},
-    {"Mr", cft::member_role,     "role",      "TEXT NOT NULL",                             {}},
+    {"M.", cft::members_jsonb,       "members", "JSONB",                                     {}},
+    {"Mj", cft::members_jsonb,       "members", "JSONB",                                     {}},
+    {"MJ", cft::members_json,        "members", "JSON",                                      {}},
+    {"Ms", cft::member_seq,          "seq_no",  "INTEGER NOT NULL",                          {}},
+    {"Mo", cft::member_type_char,    "objtype", "CHAR(1) CHECK(objtype IN ('n', 'w', 'r'))", {}},
+    {"Me", cft::member_type_enum,    "objtype", "nwr_enum NOT NULL",                         nwr_enum},
+    {"Mi", cft::member_ref,          "ref",     "BIGINT NOT NULL",                           {}},
+    {"Mr", cft::member_role,         "role",    "TEXT NOT NULL",                             {}},
 
-    {"G.", cft::geometry,            "geom",  "GEOMETRY",                          geom_index},
-    {"Gp", cft::geometry_point,      "geom",  "GEOMETRY(POINT, 4326)",             geom_index},
-    {"Gl", cft::geometry_linestring, "geom",  "GEOMETRY(LINESTRING, 4326)",        sql_column_config_flags(geom_index | location_store)},
-    {"GP", cft::geometry_polygon,    "geom",  "GEOMETRY(MULTIPOLYGON, 4326)",      sql_column_config_flags(geom_index | location_store)},
+    {"G.", cft::geometry,            "geom",    "GEOMETRY",                          geom_index},
+    {"Gp", cft::geometry_point,      "geom",    "GEOMETRY(POINT, 4326)",             geom_index},
+    {"Gl", cft::geometry_linestring, "geom",    "GEOMETRY(LINESTRING, 4326)",        sql_column_config_flags(geom_index | location_store)},
+    {"GP", cft::geometry_polygon,    "geom",    "GEOMETRY(MULTIPOLYGON, 4326)",      sql_column_config_flags(geom_index | location_store)},
 
     {"r.", cft::redaction,           "redaction_id", "INTEGER", {}}
 };
@@ -192,9 +193,15 @@ void Table::sql_data_definition() const {
     std::string sql;
 
     sql += "\\timing\n\n";
+
     sql += "DROP TABLE IF EXISTS \"";
     sql += m_name;
     sql += "\" CASCADE;\n\n";
+
+    if (m_column_flags & sql_column_config_flags::nwr_enum) {
+        sql += "DROP TYPE IF EXISTS \"nwr_enum\" CASCADE;\n\n";
+        sql += "CREATE TYPE \"nwr_enum\" AS ENUM ('Node', 'Way', 'Relation'); -- %ENUM:nwr_enum%\n\n";
+    }
 
     sql += "CREATE TABLE \"";
     sql += m_name;
@@ -551,6 +558,20 @@ void WayNodesTable::add_row(const osmium::OSMObject& object, const osmium::Times
     }
 }
 
+static const char* item_type_to_enum(const osmium::item_type type) noexcept {
+    switch (type) {
+        case osmium::item_type::node:
+            return "Node";
+        case osmium::item_type::way:
+            return "Way";
+        case osmium::item_type::relation:
+            return "Relation";
+        default:
+            break;
+    }
+    return "";
+}
+
 void MembersTable::add_row(const osmium::OSMObject& object, const osmium::Timestamp next_version_timestamp) {
     assert(object.type() == osmium::item_type::relation);
     std::size_t n = 0;
@@ -611,8 +632,11 @@ void MembersTable::add_row(const osmium::OSMObject& object, const osmium::Timest
                 case column_type::member_seq:
                     m_buffer += std::to_string(n);
                     break;
-                case column_type::member_type:
+                case column_type::member_type_char:
                     m_buffer += osmium::item_type_to_char(member.type());
+                    break;
+                case column_type::member_type_enum:
+                    m_buffer += item_type_to_enum(member.type());
                     break;
                 case column_type::member_ref:
                     m_buffer += std::to_string(member.ref());
