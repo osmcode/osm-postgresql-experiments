@@ -27,9 +27,10 @@ static const std::vector<column_config_type> column_config{
     {"I.", cft::id,              "id",           "BIGINT NOT NULL",                           {}},
     {"v.", cft::version,         "version",      "INTEGER NOT NULL",                          {}},
     {"vI", cft::version,         "version",      "BIGINT NOT NULL",                           {}},
-    {"d.", cft::deleted,         "deleted",      "BOOL NOT NULL",                             {}},
-    {"d!", cft::visible,         "visible",      "BOOL NOT NULL",                             {}},
+    {"d.", cft::deleted,         "deleted",      "BOOLEAN NOT NULL",                          {}},
+    {"d!", cft::visible,         "visible",      "BOOLEAN NOT NULL",                          {}},
     {"c.", cft::changeset,       "changeset_id", "INTEGER NOT NULL",                          {}},
+    {"cI", cft::changeset,       "changeset_id", "BIGINT NOT NULL",                           {}},
     {"t.", cft::timestamp_iso,   "created",      "TIMESTAMP (0) WITHOUT TIME ZONE",           {}},
     {"tu", cft::timestamp_sec,   "created",      "INTEGER",                                   {}},
     {"tr", cft::timestamp_range, "trange",       "TSTZRANGE",                                 time_range},
@@ -90,7 +91,7 @@ static const column_config_type& get_column_config(const std::string& format_str
         }
     }
 
-    throw std::runtime_error{"unknown column config:" + format_string};
+    throw std::runtime_error{"unknown column config: " + format_string};
 }
 
 void Table::setup_columns() {
