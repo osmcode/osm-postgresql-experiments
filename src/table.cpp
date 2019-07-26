@@ -447,15 +447,15 @@ void TagsTable::add_row(const osmium::OSMObject& object, const osmium::Timestamp
                     m_buffer.append(std::to_string(n));
                     break;
                 case column_type::tag_key:
-                    m_buffer.append(tag.key());
+                    append_pg_escaped(m_buffer, tag.key());
                     break;
                 case column_type::tag_value:
-                    m_buffer.append(tag.value());
+                    append_pg_escaped(m_buffer, tag.value());
                     break;
                 case column_type::tag_kv:
-                    m_buffer.append(tag.key());
+                    append_pg_escaped(m_buffer, tag.key());
                     m_buffer += '=';
-                    m_buffer.append(tag.value());
+                    append_pg_escaped(m_buffer, tag.value());
                     break;
                 case column_type::lon_real:
                     append_coordinate(object, m_buffer, [](osmium::Location location) -> std::string { return std::to_string(location.lon()); });
@@ -642,7 +642,7 @@ void MembersTable::add_row(const osmium::OSMObject& object, const osmium::Timest
                     m_buffer += std::to_string(member.ref());
                     break;
                 case column_type::member_role:
-                    m_buffer += member.role();
+                    append_pg_escaped(m_buffer, member.role());
                     break;
                 case column_type::redaction:
                     m_buffer += "\\N";
