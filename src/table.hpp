@@ -67,6 +67,7 @@ enum class column_type {
     node_ref,
     members_jsonb,
     members_json,
+    members_type,
     member_seq,
     member_type_char,
     member_type_enum,
@@ -81,11 +82,12 @@ enum class column_type {
 }; // enum class column_type
 
 enum sql_column_config_flags {
-    none           = 0,
-    geom_index     = 1,
-    location_store = 2,
-    time_range     = 4,
-    nwr_enum       = 8
+    none           = 0x00,
+    geom_index     = 0x01,
+    location_store = 0x02,
+    time_range     = 0x04,
+    nwr_enum       = 0x08,
+    rel_member     = 0x10
 };
 
 struct column_config_type {

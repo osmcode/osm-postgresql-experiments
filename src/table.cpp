@@ -60,6 +60,7 @@ static const std::vector<column_config_type> column_config{
     {"M.", cft::members_jsonb,       "members", "JSONB",                                     {}},
     {"Mj", cft::members_jsonb,       "members", "JSONB",                                     {}},
     {"MJ", cft::members_json,        "members", "JSON",                                      {}},
+    {"Mt", cft::members_type,        "members", "rel_member[]",                              rel_member},
     {"Ms", cft::member_seq,          "seq_no",  "INTEGER NOT NULL",                          {}},
     {"Mo", cft::member_type_char,    "objtype", "CHAR(1) CHECK(objtype IN ('n', 'w', 'r'))", {}},
     {"Me", cft::member_type_enum,    "objtype", "nwr_enum NOT NULL",                         nwr_enum},
@@ -201,6 +202,15 @@ void Table::sql_data_definition() const {
     if (m_column_flags & sql_column_config_flags::nwr_enum) {
         sql += "DROP TYPE IF EXISTS \"nwr_enum\" CASCADE;\n\n";
         sql += "CREATE TYPE \"nwr_enum\" AS ENUM ('Node', 'Way', 'Relation'); -- %ENUM:nwr_enum%\n\n";
+    }
+
+    if (m_column_flags & sql_column_config_flags::rel_member) {
+        sql += "DROP TYPE IF EXISTS \"rel_member\" CASCADE;\n\n"
+               "CREATE TYPE \"rel_member\" AS ( -- %TYPE:rel_member%\n"
+               "    \"objtype\" CHAR(1), -- %TYPE:rel_member:objtype%\n"
+               "    \"ref\" BIGINT, -- %TYPE:rel_member:ref%\n"
+               "    \"role\" TEXT -- %TYPE:rel_member:role%\n"
+               ");\n\n";
     }
 
     sql += "CREATE TABLE \"";
@@ -364,6 +374,13 @@ void ObjectsTable::add_row(const osmium::OSMObject& object, const osmium::Timest
             case column_type::members_json:
                 if (object.type() == osmium::item_type::relation) {
                     add_members_json(m_buffer, static_cast<const osmium::Relation&>(object).members());
+                } else {
+                    m_buffer += "\\N";
+                }
+                break;
+            case column_type::members_type:
+                if (object.type() == osmium::item_type::relation) {
+                    add_members_type(m_buffer, static_cast<const osmium::Relation&>(object).members());
                 } else {
                     m_buffer += "\\N";
                 }

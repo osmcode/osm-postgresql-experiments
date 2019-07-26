@@ -29,18 +29,55 @@ void add_way_nodes_array(std::string& buffer, const osmium::WayNodeList& nodes) 
     }
 }
 
-// TODO: fix escaping
-void add_members_row(std::string& buffer, const osmium::RelationMemberList& members) {
+static bool needs_quoting(const char* str) noexcept {
+    while (*str) {
+        if (!std::isalnum(*str) && *str != '_' && *str != ':') {
+            return true;
+        }
+        ++str;
+    }
+    return false;
+}
+
+static std::string escape_str(const char* str) {
+    std::string result;
+
+    while (*str) {
+        if (*str == '"') {
+            result += "\\\\\\\"";
+        } else if (*str == ',') {
+            result += "\\,";
+        } else if (*str == '\\') {
+            result += "\\\\\\\\";
+        } else {
+            result += *str;
+        }
+        ++str;
+    }
+
+    return result;
+}
+
+void add_members_type(std::string& buffer, const osmium::RelationMemberList& members) {
     buffer += '{';
+
     for (const auto& rm : members) {
         buffer += "\"(";
         buffer += osmium::item_type_to_char(rm.type());
         buffer += ',';
         buffer.append(std::to_string(rm.ref()));
-        buffer += ",\\\\\"";
-        append_pg_escaped(buffer, rm.role());
-        buffer += "\\\\\")\",";
+        if (needs_quoting(rm.role())) {
+            buffer += R"FOO(,\\")FOO";
+            const auto escaped_role = escape_str(rm.role());
+            append_pg_escaped(buffer, escaped_role.c_str());
+            buffer += R"FOO(\\")",)FOO";
+        } else {
+            buffer += ',';
+            buffer += rm.role();
+            buffer += ")\",";
+        }
     }
+
     if (buffer.back() == ',') {
         buffer.back() = '}';
     } else {

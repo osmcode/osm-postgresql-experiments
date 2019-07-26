@@ -1,0 +1,19 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<osm version="0.6" generator="test">
+  <relation id="321" version="1" timestamp="2015-03-04T12:07:15Z" uid="42" user="some_user" changeset="13">
+    <tag k="name" v="Bremen-Neustadt"/>
+    <tag k="with'quote&apos;" v='with"quote&quot;'/>
+    <tag k="with\back\slash" v='with\back\slash'/>
+    <tag k="with&#xa;newline" v='with&#xd;cr'/>
+    <tag k="with&#x9;tab" v='with&#x9;tab'/>
+    <member type="node" ref="123" role=""/>
+    <member type="way" ref="234" role="foo"/>
+    <member type="way" ref="345" role="with'quote&apos;"/>
+    <member type="way" ref="345" role='with"quote&quot;'/>
+    <member type="way" ref="345" role="with\back\slash"/>
+    <member type="way" ref="345" role="with&#xa;newline"/>
+    <member type="way" ref="345" role="with&#xd;cr"/>
+    <member type="way" ref="345" role="with&#x9;tab"/>
+    <member type="way" ref="345" role="with,comma"/>
+  </relation>
+</osm>
