@@ -58,6 +58,9 @@ std::string list_entities(const osmium::osm_entity_bits::type entities) {
     if (entities & osmium::osm_entity_bits::relation) {
         output += "relations, ";
     }
+    if (entities & osmium::osm_entity_bits::changeset) {
+        output += "changesets, ";
+    }
 
     assert(output.size() > 2);
     output.resize(output.size() - 2);

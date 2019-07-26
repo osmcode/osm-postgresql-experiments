@@ -44,6 +44,15 @@ public:
         }
     }
 
+    void changeset(const osmium::Changeset& changeset) {
+        for (auto& table : m_tables) {
+            if (table->matches(changeset.type())) {
+                table->add_changeset_row(changeset);
+                table->possible_flush();
+            }
+        }
+    }
+
 }; // class Handler
 
 class DiffHandler : public osmium::diff_handler::DiffHandler {

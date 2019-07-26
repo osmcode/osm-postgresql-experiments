@@ -19,6 +19,7 @@ static const std::vector<stream_config_type> stream_config{
     {"wN", "way_nodes",      "I.NsNi",                   "I.v.NsNi",                   stream_type::way_nodes, osmium::osm_entity_bits::way},
     {"rM", "members",        "I.MsMoMiMr",               "I.v.MsMoMiMr",               stream_type::members,   osmium::osm_entity_bits::relation},
     {"u",  "users",          "i.u.",                     "i.u.",                       stream_type::users,     osmium::osm_entity_bits::all},
+    {"c",  "changesets",     "c.i.u.k.D.O.s.e.",         "c.i.u.k.D.O.s.e.",           stream_type::changeset, osmium::osm_entity_bits::changeset},
 };
 
 using cft = column_type;
@@ -72,7 +73,20 @@ static const std::vector<column_config_type> column_config{
     {"Gl", cft::geometry_linestring, "geom",    "GEOMETRY(LINESTRING, 4326)",        sql_column_config_flags(geom_index | location_store)},
     {"GP", cft::geometry_polygon,    "geom",    "GEOMETRY(MULTIPOLYGON, 4326)",      sql_column_config_flags(geom_index | location_store)},
 
-    {"r.", cft::redaction,           "redaction_id", "INTEGER", {}}
+    {"r.", cft::redaction,           "redaction_id", "INTEGER", {}},
+
+    {"k.", cft::num_changes,         "num_changes",    "INTEGER",                         {}},
+    {"D.", cft::comments_count,      "comments_count", "INTEGER",                         {}},
+    {"O.", cft::open,                "open",           "BOOLEAN",                         {}},
+    {"s.", cft::created_at_iso,      "created_at",     "TIMESTAMP (0) WITHOUT TIME ZONE", {}},
+    {"su", cft::created_at_sec,      "created_at",     "INTEGER",                         {}},
+    {"e.", cft::closed_at_iso,       "closed_at",      "TIMESTAMP (0) WITHOUT TIME ZONE", {}},
+    {"eu", cft::closed_at_sec,       "closed_at",      "INTEGER",                         {}},
+    {"se", cft::timestamp_range,     "trange",         "TSTZRANGE",                       {}},
+    {"X.", cft::max_lon_real,        "max_lon",        "REAL",              {}},
+    {"Xi", cft::max_lon_int,         "max_lon",        "INTEGER",           {}},
+    {"Y.", cft::max_lat_real,        "max_lat",        "REAL",              {}},
+    {"Yi", cft::max_lat_int,         "max_lat",        "INTEGER",           {}},
 };
 
 void print_streams() {
@@ -672,7 +686,7 @@ std::string UsersTable::sql_primary_key() const {
     sql += name();
     sql += "\" ADD PRIMARY KEY(uid); -- %PK:";
     sql += name();
-    sql += ".uid%\n";
+    sql += ":uid%\n";
 
     return sql;
 }
@@ -701,6 +715,133 @@ void UsersTable::add_row(const osmium::OSMObject& object, const osmium::Timestam
     m_buffer.back() = '\n';
 }
 
+std::string ChangesetsTable::sql_primary_key() const {
+    std::string sql;
+
+    sql += "-- ALTER TABLE \"";
+    sql += name();
+    sql += "\" ADD PRIMARY KEY(id); -- %PK:";
+    sql += name();
+    sql += ":id%\n";
+
+    return sql;
+}
+
+void ChangesetsTable::add_changeset_row(const osmium::Changeset& changeset) {
+    for (const auto column : m_columns) {
+        switch (column.format) {
+            case column_type::changeset:
+                m_buffer.append(std::to_string(changeset.id()));
+                break;
+            case column_type::uid:
+                m_buffer.append(std::to_string(changeset.uid()));
+                break;
+            case column_type::user:
+                append_pg_escaped(m_buffer, changeset.user());
+                break;
+            case column_type::num_changes:
+                m_buffer.append(std::to_string(changeset.num_changes()));
+                break;
+            case column_type::comments_count:
+                m_buffer.append(std::to_string(changeset.num_comments()));
+                break;
+            case column_type::open:
+                m_buffer += changeset.open() ? 't' : 'f';
+                break;
+            case column_type::created_at_iso:
+                m_buffer.append(changeset.created_at().to_iso());
+                break;
+            case column_type::created_at_sec:
+                m_buffer.append(std::to_string(static_cast<uint64_t>(changeset.created_at())));
+                break;
+            case column_type::closed_at_iso:
+                if (changeset.closed_at().valid()) {
+                    m_buffer.append(changeset.closed_at().to_iso());
+                } else {
+                    m_buffer += "\\N";
+                }
+                break;
+            case column_type::closed_at_sec:
+                if (changeset.closed_at().valid()) {
+                    m_buffer.append(std::to_string(static_cast<uint64_t>(changeset.closed_at())));
+                } else {
+                    m_buffer += "\\N";
+                }
+                break;
+            case column_type::timestamp_range:
+                m_buffer += '[';
+                m_buffer.append(changeset.created_at().to_iso());
+                m_buffer += ',';
+                if (changeset.closed_at().valid()) {
+                    m_buffer.append(changeset.closed_at().to_iso());
+                }
+                m_buffer += ']';
+                break;
+            case column_type::lon_real:
+                if (changeset.bounds().valid()) {
+                    m_buffer.append(std::to_string(changeset.bounds().bottom_left().lon()));
+                } else {
+                    m_buffer += "\\N";
+                }
+                break;
+            case column_type::lon_int:
+                if (changeset.bounds().valid()) {
+                    m_buffer.append(std::to_string(changeset.bounds().bottom_left().lon()));
+                } else {
+                    m_buffer += "\\N";
+                }
+                break;
+            case column_type::lat_real:
+                if (changeset.bounds().valid()) {
+                    m_buffer.append(std::to_string(changeset.bounds().bottom_left().lat()));
+                } else {
+                    m_buffer += "\\N";
+                }
+                break;
+            case column_type::lat_int:
+                if (changeset.bounds().valid()) {
+                    m_buffer.append(std::to_string(changeset.bounds().bottom_left().lat()));
+                } else {
+                    m_buffer += "\\N";
+                }
+                break;
+            case column_type::max_lon_real:
+                if (changeset.bounds().valid()) {
+                    m_buffer.append(std::to_string(changeset.bounds().top_right().lon()));
+                } else {
+                    m_buffer += "\\N";
+                }
+                break;
+            case column_type::max_lon_int:
+                if (changeset.bounds().valid()) {
+                    m_buffer.append(std::to_string(changeset.bounds().top_right().lon()));
+                } else {
+                    m_buffer += "\\N";
+                }
+                break;
+            case column_type::max_lat_real:
+                if (changeset.bounds().valid()) {
+                    m_buffer.append(std::to_string(changeset.bounds().top_right().lat()));
+                } else {
+                    m_buffer += "\\N";
+                }
+                break;
+            case column_type::max_lat_int:
+                if (changeset.bounds().valid()) {
+                    m_buffer.append(std::to_string(changeset.bounds().top_right().lat()));
+                } else {
+                    m_buffer += "\\N";
+                }
+                break;
+            default:
+                m_buffer += "\\N";
+                break;
+        }
+        m_buffer += '\t';
+    }
+    m_buffer.back() = '\n';
+}
+
 static std::unique_ptr<Table> new_table(const std::string& filename, const stream_config_type& stream_config, const std::string& columns_string) {
     std::unique_ptr<Table> ptr;
 
@@ -719,6 +860,9 @@ static std::unique_ptr<Table> new_table(const std::string& filename, const strea
             break;
         case stream_type::users:
             ptr.reset(new UsersTable{filename, stream_config, columns_string});
+            break;
+        case stream_type::changeset:
+            ptr.reset(new ChangesetsTable{filename, stream_config, columns_string});
             break;
         default:
             std::abort();

@@ -24,7 +24,8 @@ enum class stream_type : char {
     tags      = 1,
     way_nodes = 2,
     members   = 3,
-    users     = 4
+    users     = 4,
+    changeset = 5,
 };
 
 void print_streams();
@@ -78,6 +79,17 @@ enum class column_type {
     geometry_linestring,
     geometry_polygon,
     redaction,
+    num_changes,
+    comments_count,
+    open,
+    created_at_iso,
+    closed_at_iso,
+    created_at_sec,
+    closed_at_sec,
+    max_lon_real,
+    max_lon_int,
+    max_lat_real,
+    max_lat_int,
 
 }; // enum class column_type
 
@@ -125,7 +137,11 @@ public:
 
     virtual ~Table() = default;
 
-    virtual void add_row(const osmium::OSMObject& object, const osmium::Timestamp next_version_timestamp) = 0;
+    virtual void add_row(const osmium::OSMObject& /*object*/, const osmium::Timestamp /*next_version_timestamp*/) {
+    }
+
+    virtual void add_changeset_row(const osmium::Changeset& /*changeset*/) {
+    }
 
     void close();
 
@@ -246,6 +262,20 @@ public:
     }
 
 }; // class UsersTable
+
+class ChangesetsTable : public Table {
+
+public:
+
+    ChangesetsTable(const std::string& filename, const stream_config_type& stream_config, const std::string& columns_string) :
+        Table(filename, stream_config, columns_string) {
+    }
+
+    std::string sql_primary_key() const override;
+
+    void add_changeset_row(const osmium::Changeset& changeset) override;
+
+}; // class ChangesetsTable
 
 std::unique_ptr<Table> create_table(const Options& opts, const std::string& config_string);
 
