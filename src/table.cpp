@@ -50,7 +50,7 @@ static const std::vector<column_config_type> column_config{
     {"xi", cft::lon_int,         "lon",       "INTEGER",           {}},
     {"y.", cft::lat_real,        "lat",       "REAL",              {}},
     {"yi", cft::lat_int,         "lat",       "INTEGER",           {}},
-    {"q.", cft::tile,            "tile",      "BIGINT",            {}},
+    {"q.", cft::quadtile,        "tile",      "BIGINT",            {}},
 
     {"N.", cft::nodes_array,     "nodes",     "BIGINT[]",          {}},
     {"Ns", cft::node_seq,        "seq_no",    "INT NOT NULL",      {}},
@@ -349,7 +349,7 @@ void ObjectsTable::add_row(const osmium::OSMObject& object, const osmium::Timest
             case column_type::lat_int:
                 append_coordinate(object, m_buffer, [](osmium::Location location) -> std::string { return std::to_string(location.y()); });
                 break;
-            case column_type::tile:
+            case column_type::quadtile:
                 append_coordinate(object, m_buffer, [](osmium::Location location) -> std::string { return std::to_string(quadtile(location)); });
                 break;
             case column_type::nodes_array:

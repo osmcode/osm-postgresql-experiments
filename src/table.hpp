@@ -61,7 +61,7 @@ enum class column_type {
     lon_int,
     lat_real,
     lat_int,
-    tile,
+    quadtile,
     nodes_array,
     node_seq,
     node_ref,
