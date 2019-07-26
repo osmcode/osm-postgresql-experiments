@@ -9,54 +9,39 @@ std::pair<std::string, std::string> split(const std::string& input, char delimit
     return std::make_pair(input.substr(0, pos), input.substr(pos + 1));
 }
 
+static void escape_char(std::string& buffer, const char c) noexcept {
+    switch (c) {
+        case '\\':
+            buffer += '\\';
+            buffer += '\\';
+            break;
+        case '\n':
+            buffer += '\\';
+            buffer += 'n';
+            break;
+        case '\r':
+            buffer += '\\';
+            buffer += 'r';
+            break;
+        case '\t':
+            buffer += '\\';
+            buffer += 't';
+            break;
+        default:
+            buffer += c;
+    }
+}
+
 void append_pg_escaped(std::string& buffer, const char* str, std::size_t size) {
     while (size-- > 0 && *str != '\0') {
-        switch (*str) {
-            case '\\':
-                buffer += '\\';
-                buffer += '\\';
-                break;
-            case '\n':
-                buffer += '\\';
-                buffer += 'n';
-                break;
-            case '\r':
-                buffer += '\\';
-                buffer += 'r';
-                break;
-            case '\t':
-                buffer += '\\';
-                buffer += 't';
-                break;
-            default:
-                buffer += *str;
-        }
+        escape_char(buffer, *str);
         ++str;
     }
 }
 
 void append_pg_escaped(std::string& buffer, const char* str) {
     while (*str != '\0') {
-        switch (*str) {
-            case '\\':
-                buffer += '\\';
-                buffer += '\\';
-                break;
-            case '\n':
-                buffer += '\\';
-                buffer += 'n';
-                break;
-            case '\r':
-                buffer += '\\';
-                buffer += 'r';
-                break;
-            case '\t':
-                buffer += '\\';
-                buffer += 't';
-                break;
-            default:
-                buffer += *str;
-        }
+        escape_char(buffer, *str);
         ++str;
     }
 }
