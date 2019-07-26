@@ -469,9 +469,6 @@ void TagsTable::add_row(const osmium::OSMObject& object, const osmium::Timestamp
                 case column_type::lat_int:
                     append_coordinate(object, m_buffer, [](osmium::Location location) -> std::string { return std::to_string(location.y()); });
                     break;
-                case column_type::redaction:
-                    m_buffer += "\\N";
-                    break;
                 default:
                     break;
             }
@@ -544,9 +541,6 @@ void WayNodesTable::add_row(const osmium::OSMObject& object, const osmium::Times
                     break;
                 case column_type::node_ref:
                     m_buffer.append(std::to_string(nr.ref()));
-                    break;
-                case column_type::redaction:
-                    m_buffer += "\\N";
                     break;
                 default:
                     break;
@@ -643,9 +637,6 @@ void MembersTable::add_row(const osmium::OSMObject& object, const osmium::Timest
                     break;
                 case column_type::member_role:
                     append_pg_escaped(m_buffer, member.role());
-                    break;
-                case column_type::redaction:
-                    m_buffer += "\\N";
                     break;
                 default:
                     break;
