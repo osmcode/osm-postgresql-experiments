@@ -19,7 +19,7 @@ static const std::vector<stream_config_type> stream_config{
     {"wN", "way_nodes",      "I.NsNi",                   "I.v.NsNi",                   stream_type::way_nodes, osmium::osm_entity_bits::way},
     {"rM", "members",        "I.MsMoMiMr",               "I.v.MsMoMiMr",               stream_type::members,   osmium::osm_entity_bits::relation},
     {"u",  "users",          "i.u.",                     "i.u.",                       stream_type::users,     osmium::osm_entity_bits::all},
-    {"c",  "changesets",     "c.i.u.k.D.O.s.e.",         "c.i.u.k.D.O.s.e.",           stream_type::changeset, osmium::osm_entity_bits::changeset},
+    {"c",  "changesets",     "c.i.u.k.D.O.s.e.x.y.X.Y.", "c.i.u.k.D.O.s.e.x.y.X.Y.",   stream_type::changeset, osmium::osm_entity_bits::changeset},
 };
 
 using cft = column_type;
@@ -87,6 +87,7 @@ static const std::vector<column_config_type> column_config{
     {"Xi", cft::max_lon_int,         "max_lon",        "INTEGER",           {}},
     {"Y.", cft::max_lat_real,        "max_lat",        "REAL",              {}},
     {"Yi", cft::max_lat_int,         "max_lat",        "INTEGER",           {}},
+    {"b.", cft::bounds,              "bounds",         "BOX2D",             {}},
 };
 
 void print_streams() {
@@ -829,6 +830,13 @@ void ChangesetsTable::add_changeset_row(const osmium::Changeset& changeset) {
             case column_type::max_lat_int:
                 if (changeset.bounds().valid()) {
                     m_buffer.append(std::to_string(changeset.bounds().top_right().lat()));
+                } else {
+                    m_buffer += "\\N";
+                }
+                break;
+            case column_type::bounds:
+                if (changeset.bounds().valid()) {
+                    m_buffer += "\\N"; // XXX TODO
                 } else {
                     m_buffer += "\\N";
                 }

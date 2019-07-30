@@ -90,6 +90,7 @@ enum class column_type {
     max_lon_int,
     max_lat_real,
     max_lat_int,
+    bounds,
 
 }; // enum class column_type
 
