@@ -188,9 +188,19 @@ void Table::close() {
     }
 }
 
-std::string Table::sql_primary_key() const {
+static std::string primary_key(const std::string& table_name, const std::string& keys) {
     std::string sql;
 
+    sql += "-- ALTER TABLE \"";
+    sql += table_name;
+    sql += "\" ADD PRIMARY KEY(" + keys + "); -- %PK:";
+    sql += table_name;
+    sql += "%\n";
+
+    return sql;
+}
+
+std::string Table::sql_primary_key() const {
     // TODO: should be different for different streams, disable if the fields are not all there
     std::string primary_keys;
     if (m_stream_config->entities == osmium::osm_entity_bits::nwr) {
@@ -202,13 +212,7 @@ std::string Table::sql_primary_key() const {
     }
     primary_keys.resize(primary_keys.size() - 2);
 
-    sql += "-- ALTER TABLE \"";
-    sql += m_name;
-    sql += "\" ADD PRIMARY KEY(" + primary_keys + "); -- %PK:";
-    sql += m_name;
-    sql += "%\n";
-
-    return sql;
+    return primary_key(name(), primary_keys);
 }
 
 void Table::sql_data_definition() const {
@@ -698,15 +702,7 @@ void MembersTable::add_row(const osmium::OSMObject& object, const osmium::Timest
 }
 
 std::string UsersTable::sql_primary_key() const {
-    std::string sql;
-
-    sql += "-- ALTER TABLE \"";
-    sql += name();
-    sql += "\" ADD PRIMARY KEY(uid); -- %PK:";
-    sql += name();
-    sql += ":uid%\n";
-
-    return sql;
+    return primary_key(name(), "uid");
 }
 
 void UsersTable::add_row(const osmium::OSMObject& object, const osmium::Timestamp /*next_version_timestamp*/) {
@@ -734,15 +730,7 @@ void UsersTable::add_row(const osmium::OSMObject& object, const osmium::Timestam
 }
 
 std::string ChangesetsTable::sql_primary_key() const {
-    std::string sql;
-
-    sql += "-- ALTER TABLE \"";
-    sql += name();
-    sql += "\" ADD PRIMARY KEY(id); -- %PK:";
-    sql += name();
-    sql += ":id%\n";
-
-    return sql;
+    return primary_key(name(), "id");
 }
 
 void ChangesetsTable::add_changeset_row(const osmium::Changeset& changeset) {
@@ -876,15 +864,7 @@ void ChangesetsTable::add_changeset_row(const osmium::Changeset& changeset) {
 }
 
 std::string ChangesetTagsTable::sql_primary_key() const {
-    std::string sql;
-
-    sql += "-- ALTER TABLE \"";
-    sql += name();
-    sql += "\" ADD PRIMARY KEY(id); -- %PK:";
-    sql += name();
-    sql += "%\n";
-
-    return sql;
+    return primary_key(name(), "id");
 }
 
 void ChangesetTagsTable::add_changeset_row(const osmium::Changeset& changeset) {
@@ -920,15 +900,7 @@ void ChangesetTagsTable::add_changeset_row(const osmium::Changeset& changeset) {
 }
 
 std::string ChangesetCommentsTable::sql_primary_key() const {
-    std::string sql;
-
-    sql += "-- ALTER TABLE \"";
-    sql += name();
-    sql += "\" ADD PRIMARY KEY(id); -- %PK:";
-    sql += name();
-    sql += ":id%\n";
-
-    return sql;
+    return primary_key(name(), "id");
 }
 
 void ChangesetCommentsTable::add_changeset_row(const osmium::Changeset& changeset) {
