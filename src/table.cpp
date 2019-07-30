@@ -8,18 +8,19 @@
 extern Options opts;
 
 static const std::vector<stream_config_type> stream_config{
-    {"o",  "objects",        "o.I.v.c.t.i.u.T.x.y.N.M.", "o.I.v.d.c.t.i.u.T.x.y.N.M.", stream_type::objects,   osmium::osm_entity_bits::nwr},
-    {"n",  "nodes",          "I.v.c.t.i.u.T.x.y.",       "I.v.d.c.t.i.u.T.x.y.",       stream_type::objects,   osmium::osm_entity_bits::node},
-    {"w",  "ways",           "I.v.c.t.i.u.T.N.",         "I.v.d.c.t.i.u.T.N.",         stream_type::objects,   osmium::osm_entity_bits::way},
-    {"r",  "relations",      "I.v.c.t.i.u.T.M.",         "I.v.d.c.t.i.u.T.M.",         stream_type::objects,   osmium::osm_entity_bits::relation},
-    {"oT", "tags",           "o.I.TkTv",                 "o.I.v.TkTv",                 stream_type::tags,      osmium::osm_entity_bits::nwr},
-    {"nT", "node_tags",      "I.TkTv",                   "I.v.TkTv",                   stream_type::tags,      osmium::osm_entity_bits::node},
-    {"wT", "way_tags",       "I.TkTv",                   "I.v.TkTv",                   stream_type::tags,      osmium::osm_entity_bits::way},
-    {"rT", "relation_tags",  "I.TkTv",                   "I.v.TkTv",                   stream_type::tags,      osmium::osm_entity_bits::relation},
-    {"wN", "way_nodes",      "I.NsNi",                   "I.v.NsNi",                   stream_type::way_nodes, osmium::osm_entity_bits::way},
-    {"rM", "members",        "I.MsMoMiMr",               "I.v.MsMoMiMr",               stream_type::members,   osmium::osm_entity_bits::relation},
-    {"u",  "users",          "i.u.",                     "i.u.",                       stream_type::users,     osmium::osm_entity_bits::all},
-    {"c",  "changesets",     "c.i.u.k.D.O.s.e.x.y.X.Y.", "c.i.u.k.D.O.s.e.x.y.X.Y.",   stream_type::changeset, osmium::osm_entity_bits::changeset},
+    {"o",  "objects",        "o.I.v.c.t.i.u.T.x.y.N.M.", "o.I.v.d.c.t.i.u.T.x.y.N.M.", stream_type::objects,        osmium::osm_entity_bits::nwr},
+    {"n",  "nodes",          "I.v.c.t.i.u.T.x.y.",       "I.v.d.c.t.i.u.T.x.y.",       stream_type::objects,        osmium::osm_entity_bits::node},
+    {"w",  "ways",           "I.v.c.t.i.u.T.N.",         "I.v.d.c.t.i.u.T.N.",         stream_type::objects,        osmium::osm_entity_bits::way},
+    {"r",  "relations",      "I.v.c.t.i.u.T.M.",         "I.v.d.c.t.i.u.T.M.",         stream_type::objects,        osmium::osm_entity_bits::relation},
+    {"oT", "tags",           "o.I.TkTv",                 "o.I.v.TkTv",                 stream_type::tags,           osmium::osm_entity_bits::nwr},
+    {"nT", "node_tags",      "I.TkTv",                   "I.v.TkTv",                   stream_type::tags,           osmium::osm_entity_bits::node},
+    {"wT", "way_tags",       "I.TkTv",                   "I.v.TkTv",                   stream_type::tags,           osmium::osm_entity_bits::way},
+    {"rT", "relation_tags",  "I.TkTv",                   "I.v.TkTv",                   stream_type::tags,           osmium::osm_entity_bits::relation},
+    {"wN", "way_nodes",      "I.NsNi",                   "I.v.NsNi",                   stream_type::way_nodes,      osmium::osm_entity_bits::way},
+    {"rM", "members",        "I.MsMoMiMr",               "I.v.MsMoMiMr",               stream_type::members,        osmium::osm_entity_bits::relation},
+    {"u",  "users",          "i.u.",                     "i.u.",                       stream_type::users,          osmium::osm_entity_bits::all},
+    {"c",  "changesets",     "c.i.u.k.D.O.s.e.x.y.X.Y.", "c.i.u.k.D.O.s.e.x.y.X.Y.",   stream_type::changeset,      osmium::osm_entity_bits::changeset},
+    {"cT", "changeset_tags", "I.TkTv",                   "I.TkTv",                     stream_type::changeset_tags, osmium::osm_entity_bits::changeset},
 };
 
 using cft = column_type;
@@ -778,6 +779,11 @@ void ChangesetsTable::add_changeset_row(const osmium::Changeset& changeset) {
                 }
                 m_buffer += ']';
                 break;
+            case column_type::tags_jsonb:
+                /* fallthrough */
+            case column_type::tags_json:
+                add_tags_json(m_buffer, changeset.tags());
+                break;
             case column_type::lon_real:
                 if (changeset.bounds().valid()) {
                     m_buffer.append(std::to_string(changeset.bounds().bottom_left().lon()));
@@ -850,6 +856,50 @@ void ChangesetsTable::add_changeset_row(const osmium::Changeset& changeset) {
     m_buffer.back() = '\n';
 }
 
+std::string ChangesetTagsTable::sql_primary_key() const {
+    std::string sql;
+
+    sql += "-- ALTER TABLE \"";
+    sql += name();
+    sql += "\" ADD PRIMARY KEY(id); -- %PK:";
+    sql += name();
+    sql += "%\n";
+
+    return sql;
+}
+
+void ChangesetTagsTable::add_changeset_row(const osmium::Changeset& changeset) {
+    std::size_t n = 0;
+    for (const auto& tag : changeset.tags()) {
+        for (const auto& column : m_columns) {
+            switch (column.format) {
+                case column_type::id:
+                    m_buffer.append(std::to_string(changeset.id()));
+                    break;
+                case column_type::tag_seq:
+                    m_buffer.append(std::to_string(n));
+                    break;
+                case column_type::tag_key:
+                    append_pg_escaped(m_buffer, tag.key());
+                    break;
+                case column_type::tag_value:
+                    append_pg_escaped(m_buffer, tag.value());
+                    break;
+                case column_type::tag_kv:
+                    append_pg_escaped(m_buffer, tag.key());
+                    m_buffer += '=';
+                    append_pg_escaped(m_buffer, tag.value());
+                    break;
+                default:
+                    break;
+            }
+            m_buffer += '\t';
+        }
+        m_buffer.back() = '\n';
+        ++n;
+    }
+}
+
 static std::unique_ptr<Table> new_table(const std::string& filename, const stream_config_type& stream_config, const std::string& columns_string) {
     std::unique_ptr<Table> ptr;
 
@@ -871,6 +921,9 @@ static std::unique_ptr<Table> new_table(const std::string& filename, const strea
             break;
         case stream_type::changeset:
             ptr.reset(new ChangesetsTable{filename, stream_config, columns_string});
+            break;
+        case stream_type::changeset_tags:
+            ptr.reset(new ChangesetTagsTable{filename, stream_config, columns_string});
             break;
         default:
             std::abort();

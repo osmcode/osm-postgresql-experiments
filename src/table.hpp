@@ -20,12 +20,13 @@
 #include <vector>
 
 enum class stream_type : char {
-    objects   = 0,
-    tags      = 1,
-    way_nodes = 2,
-    members   = 3,
-    users     = 4,
-    changeset = 5,
+    objects        = 0,
+    tags           = 1,
+    way_nodes      = 2,
+    members        = 3,
+    users          = 4,
+    changeset      = 5,
+    changeset_tags = 6
 };
 
 void print_streams();
@@ -277,6 +278,20 @@ public:
     void add_changeset_row(const osmium::Changeset& changeset) override;
 
 }; // class ChangesetsTable
+
+class ChangesetTagsTable : public Table {
+
+public:
+
+    ChangesetTagsTable(const std::string& filename, const stream_config_type& stream_config, const std::string& columns_string) :
+        Table(filename, stream_config, columns_string) {
+    }
+
+    std::string sql_primary_key() const override;
+
+    void add_changeset_row(const osmium::Changeset& changeset) override;
+
+}; // class ChangesetTagsTable
 
 std::unique_ptr<Table> create_table(const Options& opts, const std::string& config_string);
 
