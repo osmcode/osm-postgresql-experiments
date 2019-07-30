@@ -16,6 +16,42 @@ void add_tags_json(std::string& buffer, const osmium::TagList& tags) {
     append_pg_escaped(buffer, stream.GetString(), stream.GetSize());
 }
 
+static std::string escape_hstore(const char* str) {
+    std::string result{"\""};
+
+    while (*str) {
+        if (*str == '"') {
+            result += "\\\"";
+        } else if (*str == '\\') {
+            result += "\\\\";
+        } else {
+            result += *str;
+        }
+        ++str;
+    }
+
+    result += "\"";
+    return result;
+}
+
+void add_tags_hstore(std::string& buffer, const osmium::TagList& tags) {
+    if (tags.empty()) {
+        return;
+
+    }
+    std::string data;
+
+    for (const auto& tag : tags) {
+        data += escape_hstore(tag.key());
+        data += "=>";
+        data += escape_hstore(tag.value());
+        data += ',';
+    }
+    data.resize(data.size() - 1);
+
+    append_pg_escaped(buffer, data.c_str());
+}
+
 void add_way_nodes_array(std::string& buffer, const osmium::WayNodeList& nodes) {
     buffer += '{';
     for (const auto& nr : nodes) {

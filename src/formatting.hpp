@@ -14,6 +14,8 @@
 
 void add_tags_json(std::string& buffer, const osmium::TagList& tags);
 
+void add_tags_hstore(std::string& buffer, const osmium::TagList& tags);
+
 void add_way_nodes_array(std::string& buffer, const osmium::WayNodeList& nodes);
 
 void add_members_type(std::string& buffer, const osmium::RelationMemberList& members);

@@ -55,6 +55,7 @@ enum class column_type {
     user,
     tags_jsonb,
     tags_json,
+    tags_hstore,
     tag_seq,
     tag_key,
     tag_value,
@@ -101,7 +102,8 @@ enum sql_column_config_flags {
     location_store = 0x02,
     time_range     = 0x04,
     nwr_enum       = 0x08,
-    rel_member     = 0x10
+    rel_member     = 0x10,
+    hstore         = 0x20
 };
 
 struct column_config_type {

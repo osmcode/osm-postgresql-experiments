@@ -43,6 +43,7 @@ static const std::vector<column_config_type> column_config{
     {"T.", cft::tags_jsonb,      "tags",      "JSONB",             {}},
     {"Tj", cft::tags_jsonb,      "tags",      "JSONB",             {}},
     {"TJ", cft::tags_json,       "tags",      "JSON",              {}},
+    {"Th", cft::tags_hstore,     "tags",      "HSTORE",            hstore},
     {"Ts", cft::tag_seq,         "seq_no",    "INTEGER NOT NULL",  {}},
     {"Tk", cft::tag_key,         "key",       "TEXT NOT NULL",     {}},
     {"Tv", cft::tag_value,       "value",     "TEXT NOT NULL",     {}},
@@ -211,6 +212,10 @@ void Table::sql_data_definition() const {
 
     sql += "\\timing\n\n";
 
+    if (m_column_flags & sql_column_config_flags::hstore) {
+        sql += "CREATE EXTENSION IF NOT EXISTS hstore;\n\n";
+    }
+
     sql += "DROP TABLE IF EXISTS \"";
     sql += m_name;
     sql += "\" CASCADE;\n\n";
@@ -362,6 +367,9 @@ void ObjectsTable::add_row(const osmium::OSMObject& object, const osmium::Timest
                 /* fallthrough */
             case column_type::tags_json:
                 add_tags_json(m_buffer, object.tags());
+                break;
+            case column_type::tags_hstore:
+                add_tags_hstore(m_buffer, object.tags());
                 break;
             case column_type::lon_real:
                 append_coordinate(object, m_buffer, [](osmium::Location location) -> std::string { return std::to_string(location.lon()); });
@@ -783,6 +791,9 @@ void ChangesetsTable::add_changeset_row(const osmium::Changeset& changeset) {
                 /* fallthrough */
             case column_type::tags_json:
                 add_tags_json(m_buffer, changeset.tags());
+                break;
+            case column_type::tags_hstore:
+                add_tags_hstore(m_buffer, changeset.tags());
                 break;
             case column_type::lon_real:
                 if (changeset.bounds().valid()) {
