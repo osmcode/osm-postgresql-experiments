@@ -103,7 +103,8 @@ enum sql_column_config_flags {
     time_range     = 0x04,
     nwr_enum       = 0x08,
     rel_member     = 0x10,
-    hstore         = 0x20
+    hstore         = 0x20,
+    postgis        = 0x40
 };
 
 struct column_config_type {

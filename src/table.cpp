@@ -70,10 +70,10 @@ static const std::vector<column_config_type> column_config{
     {"Mi", cft::member_ref,          "ref",     "BIGINT NOT NULL",                           {}},
     {"Mr", cft::member_role,         "role",    "TEXT NOT NULL",                             {}},
 
-    {"G.", cft::geometry,            "geom",    "GEOMETRY",                          geom_index},
-    {"Gp", cft::geometry_point,      "geom",    "GEOMETRY(POINT, 4326)",             geom_index},
-    {"Gl", cft::geometry_linestring, "geom",    "GEOMETRY(LINESTRING, 4326)",        sql_column_config_flags(geom_index | location_store)},
-    {"GP", cft::geometry_polygon,    "geom",    "GEOMETRY(MULTIPOLYGON, 4326)",      sql_column_config_flags(geom_index | location_store)},
+    {"G.", cft::geometry,            "geom",    "GEOMETRY",                          sql_column_config_flags(geom_index | postgis)},
+    {"Gp", cft::geometry_point,      "geom",    "GEOMETRY(POINT, 4326)",             sql_column_config_flags(geom_index | postgis)},
+    {"Gl", cft::geometry_linestring, "geom",    "GEOMETRY(LINESTRING, 4326)",        sql_column_config_flags(geom_index | postgis| location_store)},
+    {"GP", cft::geometry_polygon,    "geom",    "GEOMETRY(MULTIPOLYGON, 4326)",      sql_column_config_flags(geom_index | postgis| location_store)},
 
     {"r.", cft::redaction,           "redaction_id", "INTEGER", {}},
 
@@ -89,7 +89,7 @@ static const std::vector<column_config_type> column_config{
     {"Xi", cft::max_lon_int,         "max_lon",        "INTEGER",           {}},
     {"Y.", cft::max_lat_real,        "max_lat",        "REAL",              {}},
     {"Yi", cft::max_lat_int,         "max_lat",        "INTEGER",           {}},
-    {"b.", cft::bounds,              "bounds",         "BOX2D",             {}},
+    {"b.", cft::bounds,              "bounds",         "BOX2D",             postgis},
 };
 
 void print_streams() {
@@ -214,6 +214,10 @@ void Table::sql_data_definition() const {
 
     if (m_column_flags & sql_column_config_flags::hstore) {
         sql += "CREATE EXTENSION IF NOT EXISTS hstore;\n\n";
+    }
+
+    if (m_column_flags & sql_column_config_flags::postgis) {
+        sql += "CREATE EXTENSION IF NOT EXISTS postgis;\n\n";
     }
 
     sql += "DROP TABLE IF EXISTS \"";
