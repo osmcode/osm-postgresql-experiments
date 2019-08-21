@@ -28,7 +28,7 @@ class Handler : public osmium::handler::Handler {
 
 public:
 
-    Handler(std::vector<std::unique_ptr<Table>>& tables) :
+    explicit Handler(std::vector<std::unique_ptr<Table>>& tables) :
         m_tables(tables) {
     }
 
@@ -73,7 +73,7 @@ class DiffHandler : public osmium::diff_handler::DiffHandler {
 
 public:
 
-    DiffHandler(std::vector<std::unique_ptr<Table>>& tables) :
+    explicit DiffHandler(std::vector<std::unique_ptr<Table>>& tables) :
         m_tables(tables) {
     }
 
