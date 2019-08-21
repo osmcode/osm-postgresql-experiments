@@ -117,6 +117,31 @@ set(CMAKE_BUILD_TYPE ${build_type}
 
 #-----------------------------------------------------------------------------
 #
+#  Optional "clang-tidy" target
+#
+#-----------------------------------------------------------------------------
+message(STATUS "Looking for clang-tidy")
+find_program(CLANG_TIDY NAMES clang-tidy clang-tidy-10 clang-tidy-9)
+
+if(CLANG_TIDY)
+    message(STATUS "Looking for clang-tidy - found ${CLANG_TIDY}")
+
+    file(GLOB ALL_CODE src/*.cpp)
+
+    add_custom_target(clang-tidy
+        ${CLANG_TIDY}
+        -p ${CMAKE_BINARY_DIR}
+        "-extra-arg=-Wno-#pragma-messages"
+        ${ALL_CODE}
+    )
+else()
+    message(STATUS "Looking for clang-tidy - not found")
+    message(STATUS "  Build target 'clang-tidy' will not be available.")
+endif()
+
+
+#-----------------------------------------------------------------------------
+#
 #  Optional "cppcheck" target that checks C++ code
 #
 #-----------------------------------------------------------------------------
@@ -130,7 +155,7 @@ if(CPPCHECK)
     # cpp doesn't find system includes for some reason, suppress that report
     set(CPPCHECK_OPTIONS ${CPPCHECK_OPTIONS} --suppress=missingIncludeSystem)
 
-    file(GLOB ALL_CODE *.cpp)
+    file(GLOB ALL_CODE src/*.cpp)
 
     set(CPPCHECK_FILES ${ALL_CODE})
 

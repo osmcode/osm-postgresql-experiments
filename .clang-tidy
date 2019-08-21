@@ -1,0 +1,67 @@
+---
+Checks: '*,-android-cloexec-*,-cert-err58-cpp,-cppcoreguidelines-avoid-c-arrays,-cppcoreguidelines-avoid-magic-numbers,-cppcoreguidelines-owning-memory,-cppcoreguidelines-pro-bounds-array-to-pointer-decay,-cppcoreguidelines-pro-bounds-pointer-arithmetic,-cppcoreguidelines-pro-type-static-cast-downcast,-cppcoreguidelines-pro-type-vararg,-fuchsia-*,-google-readability-todo,-google-runtime-references,-hicpp-avoid-c-arrays,-hicpp-no-array-decay,-modernize-avoid-c-arrays,-modernize-use-trailing-return-type,-readability-implicit-bool-conversion,-readability-magic-numbers'
+#
+#  For a list of check options, see:
+#  https://clang.llvm.org/extra/clang-tidy/checks/list.html
+#
+#  Disabled checks:
+#
+#  android-cloexec-*
+#    O_CLOEXEC isn't available on Windows making this non-portable.
+#
+#  cert-err58-cpp
+#    Too strict.
+#
+#  cppcoreguidelines-avoid-c-arrays
+#    Alias for modernize-avoid-c-arrays.
+#
+#  cppcoreguidelines-avoid-magic-numbers
+#    Generally good advice, but there are too many places where this is
+#    useful, for instance in tests.
+#
+#  cppcoreguidelines-owning-memory
+#    Don't want to add dependency on gsl library.
+#
+#  cppcoreguidelines-pro-bounds-array-to-pointer-decay
+#    Limited use and many false positives including for all asserts.
+#
+#  cppcoreguidelines-pro-bounds-pointer-arithmetic
+#    Difficult to get by without it...
+#
+#  cppcoreguidelines-pro-type-static-cast-downcast
+#    This is needed and totally okay if we are sure about the types.
+#
+#  cppcoreguidelines-pro-type-vararg
+#    We need some of these functions at least and for some functions it isn't
+#    even clear that those are vararg functions.
+#
+#  fuchsia-*
+#    Much too strict.
+#
+#  google-readability-todo
+#    Not needed for such a small project.
+#
+#  google-runtime-references
+#    This is just a matter of preference.
+#
+#  hicpp-avoid-c-arrays
+#    Alias for modernize-avoid-c-arrays.
+#
+#  hicpp-no-array-decay
+#    Alias for cppcoreguidelines-pro-bounds-array-to-pointer-decay.
+#
+#  modernize-avoid-c-arrays
+#    Makes sense for some array, but especially for char arrays using
+#    std::array isn't a good solution.
+#
+#  modernize-use-trailing-return-type
+#    I am not quite that modern.
+#
+#  readability-implicit-bool-conversion
+#    I don't think this makes the code more readable.
+#
+#  readability-magic-numbers
+#    Alias for cppcoreguidelines-avoid-magic-numbers.
+#
+#WarningsAsErrors: '*'
+...
