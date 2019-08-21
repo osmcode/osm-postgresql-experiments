@@ -2,8 +2,8 @@
 #include "options.hpp"
 #include "table.hpp"
 
+#include <cmath>
 #include <iostream>
-#include <math.h>
 
 extern Options opts;
 
@@ -136,12 +136,12 @@ void Table::setup_columns() {
     }
 }
 
-Table::Table(const std::string& filename, const stream_config_type& stream_config, const std::string& columns_string) :
-    m_filename(filename),
-    m_columns_string(columns_string),
+Table::Table(std::string filename, const stream_config_type& stream_config, std::string columns_string) :
+    m_filename(std::move(filename)),
+    m_columns_string(std::move(columns_string)),
     m_stream_config(&stream_config) {
 
-    if (m_filename == "") { // no name means STDOUT
+    if (m_filename.empty()) { // no name means STDOUT
         m_name = m_stream_config->name;
         m_fd = 1;
     } else {
@@ -160,7 +160,7 @@ Table::Table(const std::string& filename, const stream_config_type& stream_confi
             m_filename += ".pgcopy";
         }
 
-        m_fd = ::open(m_filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0666);
+        m_fd = ::open(m_filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0666); // NOLINT(hicpp-signed-bitwise, hicpp-vararg)
         if (m_fd < 0) {
             throw std::runtime_error{"can't open file: " + m_filename};
         }
@@ -250,7 +250,7 @@ void Table::sql_data_definition() const {
     sql += m_name;
     sql += "\" (\n";
 
-    for (const auto column : m_columns) {
+    for (const auto& column : m_columns) {
         sql += "    \"";
         sql += column.sql_name;
         sql += "\" ";
@@ -311,19 +311,19 @@ void append_coordinate(const osmium::OSMObject& object, std::string& buffer, TFu
 }
 
 static inline unsigned int lon2x(double lon) noexcept {
-   return std::round((lon + 180.0) * 65535.0 / 360.0);
+   return static_cast<unsigned int>(std::round((lon + 180.0) * 65535.0 / 360.0));
 }
 
 static inline unsigned int lat2y(double lat) noexcept {
-   return std::round((lat + 90.0) * 65535.0 / 180.0);
+   return static_cast<unsigned int>(std::round((lat + 90.0) * 65535.0 / 180.0));
 }
 
 static inline unsigned int xy2tile(unsigned int x, unsigned int y) noexcept {
    unsigned int tile = 0;
 
    for (int i = 15; i >= 0; --i) {
-      tile = (tile << 1u) | ((x >> i) & 1u);
-      tile = (tile << 1u) | ((y >> i) & 1u);
+      tile = (tile << 1U) | ((x >> i) & 1U);
+      tile = (tile << 1U) | ((y >> i) & 1U);
    }
 
    return tile;
@@ -712,7 +712,7 @@ void UsersTable::add_row(const osmium::OSMObject& object, const osmium::Timestam
 
     m_user_ids.set(object.uid());
 
-    for (const auto column : m_columns) {
+    for (const auto& column : m_columns) {
         switch (column.format) {
             case column_type::uid:
                 m_buffer.append(std::to_string(object.uid()));
@@ -734,7 +734,7 @@ std::string ChangesetsTable::sql_primary_key() const {
 }
 
 void ChangesetsTable::add_changeset_row(const osmium::Changeset& changeset) {
-    for (const auto column : m_columns) {
+    for (const auto& column : m_columns) {
         switch (column.format) {
             case column_type::changeset:
                 m_buffer.append(std::to_string(changeset.id()));
@@ -800,7 +800,7 @@ void ChangesetsTable::add_changeset_row(const osmium::Changeset& changeset) {
                 break;
             case column_type::lon_int:
                 if (changeset.bounds().valid()) {
-                    m_buffer.append(std::to_string(changeset.bounds().bottom_left().lon()));
+                    m_buffer.append(std::to_string(changeset.bounds().bottom_left().x()));
                 } else {
                     m_buffer += "\\N";
                 }
@@ -814,7 +814,7 @@ void ChangesetsTable::add_changeset_row(const osmium::Changeset& changeset) {
                 break;
             case column_type::lat_int:
                 if (changeset.bounds().valid()) {
-                    m_buffer.append(std::to_string(changeset.bounds().bottom_left().lat()));
+                    m_buffer.append(std::to_string(changeset.bounds().bottom_left().y()));
                 } else {
                     m_buffer += "\\N";
                 }
@@ -828,7 +828,7 @@ void ChangesetsTable::add_changeset_row(const osmium::Changeset& changeset) {
                 break;
             case column_type::max_lon_int:
                 if (changeset.bounds().valid()) {
-                    m_buffer.append(std::to_string(changeset.bounds().top_right().lon()));
+                    m_buffer.append(std::to_string(changeset.bounds().top_right().x()));
                 } else {
                     m_buffer += "\\N";
                 }
@@ -842,7 +842,7 @@ void ChangesetsTable::add_changeset_row(const osmium::Changeset& changeset) {
                 break;
             case column_type::max_lat_int:
                 if (changeset.bounds().valid()) {
-                    m_buffer.append(std::to_string(changeset.bounds().top_right().lat()));
+                    m_buffer.append(std::to_string(changeset.bounds().top_right().y()));
                 } else {
                     m_buffer += "\\N";
                 }
@@ -979,16 +979,16 @@ std::unique_ptr<Table> create_table(const Options& opts, const std::string& conf
     const std::string stream = sre.first;
     std::string column_config_string = sre.second;
 
-    const auto& stream_config = get_stream_config(stream);
+    const auto& config = get_stream_config(stream);
 
     if (column_config_string.empty()) {
         if (opts.with_history) {
-            column_config_string = stream_config.with_history;
+            column_config_string = config.with_history;
         } else {
-            column_config_string = stream_config.without_history;
+            column_config_string = config.without_history;
         }
     }
 
-    return new_table(filename, stream_config, column_config_string);
+    return new_table(filename, config, column_config_string);
 }
 

@@ -98,7 +98,7 @@ enum class column_type {
 
 }; // enum class column_type
 
-enum sql_column_config_flags {
+enum sql_column_config_flags : unsigned int {
     none           = 0x00,
     geom_index     = 0x01,
     location_store = 0x02,
@@ -134,7 +134,7 @@ protected:
 
 public:
 
-    Table(const std::string& filename, const stream_config_type& stream_config, const std::string& columns_string);
+    Table(std::string filename, const stream_config_type& stream_config, std::string columns_string);
 
     Table(const Table&) = delete;
     Table& operator=(const Table&) = delete;

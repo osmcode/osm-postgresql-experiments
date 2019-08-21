@@ -80,11 +80,11 @@ static std::string escape_str(const char* str) {
 
     while (*str) {
         if (*str == '"') {
-            result += "\\\\\\\"";
+            result += R"(\\\")";
         } else if (*str == ',') {
             result += "\\,";
         } else if (*str == '\\') {
-            result += "\\\\\\\\";
+            result += R"(\\\\)";
         } else {
             result += *str;
         }
