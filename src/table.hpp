@@ -119,18 +119,18 @@ struct column_config_type {
 
 class Table {
 
-    std::string m_filename;
-    std::string m_columns_string;
-    std::string m_name;
-    std::string m_path;
+    std::string m_filename{};
+    std::string m_columns_string{};
+    std::string m_name{};
+    std::string m_path{};
     const stream_config_type* m_stream_config;
     sql_column_config_flags m_column_flags = none;
     int m_fd = -1;
 
 protected:
 
-    std::vector<column_config_type> m_columns;
-    std::string m_buffer;
+    std::vector<column_config_type> m_columns{};
+    std::string m_buffer{};
 
 public:
 
