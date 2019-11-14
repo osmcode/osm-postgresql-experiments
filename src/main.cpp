@@ -170,11 +170,14 @@ void parse_command_line(int argc, char* argv[], std::string& input_filename, std
     if (vm.count("tables")) {
         for (const auto& table_config : vm["tables"].as<std::vector<std::string>>()) {
             tables.emplace_back(create_table(opts, table_config));
-            tables.back()->sql_data_definition();
-            if (tables.back()->column_flags() & sql_column_config_flags::location_store) {
+            const auto& new_table = *tables.back();
+            if (!new_table.filename().empty()) {
+                new_table.sql_data_definition();
+            }
+            if (new_table.column_flags() & sql_column_config_flags::location_store) {
                 opts.use_location_handler = true;
             }
-            if (tables.back()->column_flags() & sql_column_config_flags::time_range) {
+            if (new_table.column_flags() & sql_column_config_flags::time_range) {
                 opts.use_diff_handler = true;
             }
             if (opts.use_location_handler && opts.use_diff_handler) {
