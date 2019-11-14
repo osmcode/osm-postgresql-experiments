@@ -14,6 +14,7 @@ static const std::vector<stream_config_type> stream_config{
     {"n",  "nodes",              "I.v.c.t.i.u.T.x.y.",       "I.v.d.c.t.i.u.T.x.y.",       stream_type::objects,            oeb::node},
     {"w",  "ways",               "I.v.c.t.i.u.T.N.",         "I.v.d.c.t.i.u.T.N.",         stream_type::objects,            oeb::way},
     {"r",  "relations",          "I.v.c.t.i.u.T.M.",         "I.v.d.c.t.i.u.T.M.",         stream_type::objects,            oeb::relation},
+    {"a",  "areas",              "I.T.GP",                   "",                           stream_type::objects,            oeb::area},
     {"oT", "tags",               "o.I.TkTv",                 "o.I.v.TkTv",                 stream_type::tags,               oeb::nwr},
     {"nT", "node_tags",          "I.TkTv",                   "I.v.TkTv",                   stream_type::tags,               oeb::node},
     {"wT", "way_tags",           "I.TkTv",                   "I.v.TkTv",                   stream_type::tags,               oeb::way},
@@ -30,7 +31,9 @@ using cft = column_type;
 
 static const std::vector<column_config_type> column_config{
     {"o.", cft::objtype,         "objtype",      "CHAR(1) CHECK(objtype IN ('n', 'w', 'r'))", {}},
+    {"oo", cft::orig_type,       "orig_type",    "CHAR(1) CHECK(orig_type IN ('w', 'r'))",    {}}, // areas only
     {"I.", cft::id,              "id",           "BIGINT NOT NULL",                           {}},
+    {"Io", cft::orig_id,         "orig_id",      "BIGINT NOT NULL",                           {}}, // areas only
     {"v.", cft::version,         "version",      "INTEGER NOT NULL",                          {}},
     {"vI", cft::version,         "version",      "BIGINT NOT NULL",                           {}},
     {"d.", cft::deleted,         "deleted",      "BOOLEAN NOT NULL",                          {}},
@@ -75,8 +78,8 @@ static const std::vector<column_config_type> column_config{
 
     {"G.", cft::geometry,            "geom",    "GEOMETRY",                          sql_column_config_flags(geom_index | postgis)},
     {"Gp", cft::geometry_point,      "geom",    "GEOMETRY(POINT, 4326)",             sql_column_config_flags(geom_index | postgis)},
-    {"Gl", cft::geometry_linestring, "geom",    "GEOMETRY(LINESTRING, 4326)",        sql_column_config_flags(geom_index | postgis| location_store)},
-    {"GP", cft::geometry_polygon,    "geom",    "GEOMETRY(MULTIPOLYGON, 4326)",      sql_column_config_flags(geom_index | postgis| location_store)},
+    {"Gl", cft::geometry_linestring, "geom",    "GEOMETRY(LINESTRING, 4326)",        sql_column_config_flags(geom_index | postgis | location_store)},
+    {"GP", cft::geometry_polygon,    "geom",    "GEOMETRY(MULTIPOLYGON, 4326)",      sql_column_config_flags(geom_index | postgis | location_store | assemble_areas)},
 
     {"r.", cft::redaction,           "redaction_id", "INTEGER", {}},
 
@@ -342,6 +345,20 @@ void ObjectsTable::add_row(const osmium::OSMObject& object, const osmium::Timest
             case column_type::id:
                 m_buffer.append(std::to_string(object.id()));
                 break;
+            case column_type::orig_id:
+                if (object.type() == osmium::item_type::area) {
+                    m_buffer.append(std::to_string(static_cast<const osmium::Area&>(object).orig_id()));
+                } else {
+                    m_buffer += "\\N";
+                }
+                break;
+            case column_type::orig_type:
+                if (object.type() == osmium::item_type::area) {
+                    m_buffer += static_cast<const osmium::Area&>(object).from_way() ? 'w' : 'r';
+                } else {
+                    m_buffer += "\\N";
+                }
+                break;
             case column_type::version:
                 m_buffer.append(std::to_string(object.version()));
                 break;
@@ -434,6 +451,17 @@ void ObjectsTable::add_row(const osmium::OSMObject& object, const osmium::Timest
                 if (object.type() == osmium::item_type::way) {
                     try {
                         m_buffer.append(m_factory.create_linestring(static_cast<const osmium::Way&>(object)));
+                    } catch (const osmium::geometry_error&) {
+                        m_buffer += "\\N";
+                    }
+                } else {
+                    m_buffer += "\\N";
+                }
+                break;
+            case column_type::geometry_polygon:
+                if (object.type() == osmium::item_type::area) {
+                    try {
+                        m_buffer.append(m_factory.create_multipolygon(static_cast<const osmium::Area&>(object)));
                     } catch (const osmium::geometry_error&) {
                         m_buffer += "\\N";
                     }

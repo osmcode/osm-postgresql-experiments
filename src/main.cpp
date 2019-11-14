@@ -2,6 +2,8 @@
 #include "options.hpp"
 #include "table.hpp"
 
+#include <osmium/area/assembler.hpp>
+#include <osmium/area/multipolygon_manager.hpp>
 #include <osmium/diff_handler.hpp>
 #include <osmium/diff_visitor.hpp>
 #include <osmium/handler.hpp>
@@ -177,6 +179,9 @@ void parse_command_line(int argc, char* argv[], std::string& input_filename, std
             if (new_table.column_flags() & sql_column_config_flags::location_store) {
                 opts.use_location_handler = true;
             }
+            if (new_table.column_flags() & sql_column_config_flags::assemble_areas) {
+                opts.assemble_areas = true;
+            }
             if (new_table.column_flags() & sql_column_config_flags::time_range) {
                 opts.use_diff_handler = true;
             }
@@ -209,15 +214,21 @@ int main(int argc, char* argv[]) {
     vout << "  With history: " << yes_no(opts.with_history);
     vout << "  Use diff handler: " << yes_no(opts.use_diff_handler);
     vout << "  Use location index: " << yes_no(opts.use_location_handler);
+    vout << "  Assemble areas: " << yes_no(opts.assemble_areas);
 
     vout << "Filter:\n";
     vout << "  With tags: " << yes_no(opts.filter_with_tags);
 
     vout << "Tables:\n";
 
-    osmium::osm_entity_bits::type read_entities = osmium::osm_entity_bits::nothing;
+    osmium::osm_entity_bits::type read_entities = opts.use_location_handler ?
+        osmium::osm_entity_bits::node : osmium::osm_entity_bits::nothing;
     for (const auto& table : tables) {
-        read_entities |= table->read_entities();
+        if (table->read_entities() == osmium::osm_entity_bits::area) {
+            read_entities |= osmium::osm_entity_bits::nwr;
+        } else {
+            read_entities |= table->read_entities();
+        }
         vout << "  " << table->name() << ":\n";
         vout << "    filename: " << table->filename()       << '\n';
         vout << "    stream:   " << table->stream_name()    << '\n';
@@ -241,25 +252,46 @@ int main(int argc, char* argv[]) {
 
         vout << "Transforming data...\n";
 
-        osmium::io::Reader reader{input_filename, read_entities};
+        osmium::io::File input_file{input_filename};
 
         if (opts.use_diff_handler) {
             DiffHandler handler{tables};
+            osmium::io::Reader reader{input_file, read_entities};
             osmium::apply_diff(reader, handler);
+            reader.close();
         } else {
+            using index_type = osmium::index::map::FlexMem<osmium::unsigned_object_id_type, osmium::Location>;
+            using location_handler_type = osmium::handler::NodeLocationsForWays<index_type>;
             Handler handler{tables};
-            if (opts.use_location_handler) {
-                using index_type = osmium::index::map::FlexMem<osmium::unsigned_object_id_type, osmium::Location>;
-                using location_handler_type = osmium::handler::NodeLocationsForWays<index_type>;
+            if (opts.assemble_areas) {
+                osmium::area::Assembler::config_type assembler_config;
+                osmium::area::MultipolygonManager<osmium::area::Assembler> mp_manager{assembler_config};
+                vout << "First pass reading relations...\n";
+                osmium::relations::read_relations(input_file, mp_manager);
+                vout << "First pass done.\n";
+                osmium::relations::print_used_memory(std::cerr, mp_manager.used_memory());
                 index_type index;
                 location_handler_type location_handler{index};
+                location_handler.ignore_errors();
+                vout << "Second pass...\n";
+                osmium::io::Reader reader{input_file, read_entities};
+                osmium::apply(reader, location_handler, mp_manager.handler([&handler](osmium::memory::Buffer&& buffer) {
+                    osmium::apply(buffer, handler);
+                }));
+                reader.close();
+                vout << "Second pass done.\n";
+            } else if (opts.use_location_handler) {
+                index_type index;
+                location_handler_type location_handler{index};
+                osmium::io::Reader reader{input_file, read_entities};
                 osmium::apply(reader, location_handler, handler);
+                reader.close();
             } else {
+                osmium::io::Reader reader{input_file, read_entities};
                 osmium::apply(reader, handler);
+                reader.close();
             }
         }
-
-        reader.close();
 
         for (auto& table : tables) {
             table->flush();

@@ -77,6 +77,8 @@ enum class column_type {
     member_type_enum,
     member_ref,
     member_role,
+    orig_id,
+    orig_type,
     geometry,
     geometry_point,
     geometry_linestring,
@@ -106,7 +108,8 @@ enum sql_column_config_flags : unsigned int {
     nwr_enum       = 0x08,
     rel_member     = 0x10,
     hstore         = 0x20,
-    postgis        = 0x40
+    postgis        = 0x40,
+    assemble_areas = 0x80
 };
 
 struct column_config_type {
