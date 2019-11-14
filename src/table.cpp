@@ -322,8 +322,8 @@ static inline unsigned int xy2tile(unsigned int x, unsigned int y) noexcept {
    unsigned int tile = 0;
 
    for (int i = 15; i >= 0; --i) {
-      tile = (tile << 1U) | ((x >> i) & 1U);
-      tile = (tile << 1U) | ((y >> i) & 1U);
+      tile = (tile << 1U) | ((x >> static_cast<unsigned int>(i)) & 1U);
+      tile = (tile << 1U) | ((y >> static_cast<unsigned int>(i)) & 1U);
    }
 
    return tile;
