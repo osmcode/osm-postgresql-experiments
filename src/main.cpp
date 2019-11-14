@@ -228,37 +228,44 @@ int main(int argc, char* argv[]) {
         read_entities = osmium::osm_entity_bits::all;
     }
 
-    if (read_entities == osmium::osm_entity_bits::nothing) {
-        throw std::runtime_error{"nothing to do"};
-    }
+    try {
 
-    vout << "Reading entities: " << list_entities(read_entities) << '\n';
-
-    vout << "Transforming data...\n";
-
-    osmium::io::Reader reader{input_filename, read_entities};
-
-    if (opts.use_diff_handler) {
-        DiffHandler handler{tables};
-        osmium::apply_diff(reader, handler);
-    } else {
-        Handler handler{tables};
-        if (opts.use_location_handler) {
-            using index_type = osmium::index::map::FlexMem<osmium::unsigned_object_id_type, osmium::Location>;
-            using location_handler_type = osmium::handler::NodeLocationsForWays<index_type>;
-            index_type index;
-            location_handler_type location_handler{index};
-            osmium::apply(reader, location_handler, handler);
-        } else {
-            osmium::apply(reader, handler);
+        if (read_entities == osmium::osm_entity_bits::nothing) {
+            throw std::runtime_error{"Nothing to do"};
         }
-    }
 
-    reader.close();
+        vout << "Reading entities: " << list_entities(read_entities) << '\n';
 
-    for (auto& table : tables) {
-        table->flush();
-        table->close();
+        vout << "Transforming data...\n";
+
+        osmium::io::Reader reader{input_filename, read_entities};
+
+        if (opts.use_diff_handler) {
+            DiffHandler handler{tables};
+            osmium::apply_diff(reader, handler);
+        } else {
+            Handler handler{tables};
+            if (opts.use_location_handler) {
+                using index_type = osmium::index::map::FlexMem<osmium::unsigned_object_id_type, osmium::Location>;
+                using location_handler_type = osmium::handler::NodeLocationsForWays<index_type>;
+                index_type index;
+                location_handler_type location_handler{index};
+                osmium::apply(reader, location_handler, handler);
+            } else {
+                osmium::apply(reader, handler);
+            }
+        }
+
+        reader.close();
+
+        for (auto& table : tables) {
+            table->flush();
+            table->close();
+        }
+
+    } catch (const std::exception& e) {
+        std::cerr << e.what() << '\n';
+        return 1;
     }
 
     vout << "Done.\n";
