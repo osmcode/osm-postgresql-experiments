@@ -2,7 +2,16 @@
 # OSM-PostgreSQL-Experiments
 
 This is some experimental code for importing OSM data into a PostgreSQL/PostGIS
-database.
+database. It is meant as a super-flexible tool for advanced OSM and database
+users who know the ins and outs of the OSM data model and as a test bed for
+implementing new ideas in getting OSM data into PostgreSQL/PostGIS. This is
+definitely not a tool for casual users.
+
+This program doesn't actually talk to the PostgreSQL database. Instead it
+creates files in the PostgreSQL COPY format containing the data and SQL files
+with the commands to create the tables and import the data. This allows you to
+change anything or add extra steps anywhere along the import process giving you
+even more flexibility.
 
 ## Build
 
@@ -32,6 +41,7 @@ be one of the following:
 * n: nodes
 * w: ways
 * r: relations
+* a: areas
 * oT: tags from all objects
 * nT: tags from nodes
 * wT: tags from ways
@@ -39,6 +49,9 @@ be one of the following:
 * wN: nodes from ways
 * rM: members from relations
 * u: users
+* c: changesets
+* cT: tags from changesets
+* cC: comments from changesets
 
 The `COLUMNS` define the columns to be written out. Each column is specified
 by two characters, the first specifies the column type, the second the format.
@@ -56,10 +69,19 @@ user id encountered while generating any of the other tables specified. This
 allows you to have user ids in all tables and a lookup table to get the user
 names from these.
 
+## Command line options
+
+* `-f, --filter FILTER`: Only import data that matches the filter expresssion.
+  Currently the only supported filter is `with-tags`, ie. objects without
+  tags are ignored.
+* `-h, --help`: Show usage information.
+* `-v, --verbose`: Enable verbose mode.
+* `-H, --with-history`: The input file contains history data, ie. there can
+  be several versions of the same object in it.
 
 ## License
 
-Copyright (C) 2019  Jochen Topf (jochen@topf.org)
+Copyright (C) 2020  Jochen Topf (jochen@topf.org)
 
 This program is available under the GNU GENERAL PUBLIC LICENSE Version 3.
 See the file LICENSE.txt for the complete text of the license.
