@@ -121,7 +121,7 @@ set(CMAKE_BUILD_TYPE ${build_type}
 #
 #-----------------------------------------------------------------------------
 message(STATUS "Looking for clang-tidy")
-find_program(CLANG_TIDY NAMES clang-tidy clang-tidy-10 clang-tidy-9)
+find_program(CLANG_TIDY NAMES clang-tidy clang-tidy-12 clang-tidy-11 clang-tidy-10 clang-tidy-9)
 
 if(CLANG_TIDY)
     message(STATUS "Looking for clang-tidy - found ${CLANG_TIDY}")

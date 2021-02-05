@@ -1,5 +1,5 @@
 ---
-Checks: '*,-android-cloexec-*,-cert-err58-cpp,-cppcoreguidelines-avoid-c-arrays,-cppcoreguidelines-avoid-magic-numbers,-cppcoreguidelines-owning-memory,-cppcoreguidelines-pro-bounds-array-to-pointer-decay,-cppcoreguidelines-pro-bounds-pointer-arithmetic,-cppcoreguidelines-pro-type-static-cast-downcast,-cppcoreguidelines-pro-type-vararg,-fuchsia-*,-google-readability-todo,-google-runtime-references,-hicpp-avoid-c-arrays,-hicpp-no-array-decay,-modernize-avoid-c-arrays,-modernize-use-trailing-return-type,-readability-implicit-bool-conversion,-readability-magic-numbers'
+Checks: '*,-android-cloexec-*,-cert-err58-cpp,-cppcoreguidelines-avoid-c-arrays,-cppcoreguidelines-avoid-magic-numbers,-cppcoreguidelines-owning-memory,-cppcoreguidelines-pro-bounds-array-to-pointer-decay,-cppcoreguidelines-pro-bounds-pointer-arithmetic,-cppcoreguidelines-pro-type-static-cast-downcast,-cppcoreguidelines-pro-type-vararg,-fuchsia-*,-google-readability-todo,-google-runtime-references,-hicpp-avoid-c-arrays,-hicpp-no-array-decay,-llvmlibc-*,-modernize-avoid-c-arrays,-modernize-use-trailing-return-type,-readability-implicit-bool-conversion,-readability-magic-numbers'
 #
 #  For a list of check options, see:
 #  https://clang.llvm.org/extra/clang-tidy/checks/list.html
@@ -49,6 +49,9 @@ Checks: '*,-android-cloexec-*,-cert-err58-cpp,-cppcoreguidelines-avoid-c-arrays,
 #
 #  hicpp-no-array-decay
 #    Alias for cppcoreguidelines-pro-bounds-array-to-pointer-decay.
+#
+#  llvmlibc-*
+#    Doesn't apply.
 #
 #  modernize-avoid-c-arrays
 #    Makes sense for some array, but especially for char arrays using
