@@ -180,7 +180,7 @@ void Table::flush() {
         if (written < 0 || static_cast<std::size_t>(written) != m_buffer.size()) {
             throw std::runtime_error{"write error"};
         }
-        m_buffer.resize(0);
+        m_buffer.clear();
     }
 }
 
