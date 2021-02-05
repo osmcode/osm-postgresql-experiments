@@ -30,7 +30,7 @@ enum class stream_type : char {
     changeset_comments = 7
 };
 
-void print_streams();
+std::string print_streams();
 
 struct stream_config_type {
     std::string stream;

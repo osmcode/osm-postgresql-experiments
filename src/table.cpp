@@ -1,4 +1,5 @@
 
+#include "format.hpp"
 #include "options.hpp"
 #include "table.hpp"
 
@@ -99,10 +100,14 @@ static const std::vector<column_config_type> column_config{
     {"C.", cft::comment_text,        "body",           "TEXT",              {}},
 };
 
-void print_streams() {
+std::string print_streams() {
+    std::string out;
+
     for (const auto& config : stream_config) {
-        std::cout << "    " << config.stream << ": " << config.name << '\n';
+        out += "    {}: {}\n"_format(config.stream, config.name);
     }
+
+    return out;
 }
 
 static const stream_config_type& get_stream_config(const std::string& stream_string) {
@@ -192,15 +197,7 @@ void Table::close() {
 }
 
 static std::string primary_key(const std::string& table_name, const std::string& keys) {
-    std::string sql;
-
-    sql += "-- ALTER TABLE \"";
-    sql += table_name;
-    sql += "\" ADD PRIMARY KEY(" + keys + "); -- %PK:";
-    sql += table_name;
-    sql += "%\n";
-
-    return sql;
+    return "-- ALTER TABLE \"{0}\" ADD PRIMARY KEY({1}); -- %PK:{0}%\n"_format(table_name, keys);
 }
 
 std::string Table::sql_primary_key() const {
@@ -231,9 +228,7 @@ void Table::sql_data_definition() const {
         sql += "CREATE EXTENSION IF NOT EXISTS postgis;\n\n";
     }
 
-    sql += "DROP TABLE IF EXISTS \"";
-    sql += m_name;
-    sql += "\" CASCADE;\n\n";
+    sql += "DROP TABLE IF EXISTS \"{}\" CASCADE;\n\n"_format(m_name);
 
     if (m_column_flags & sql_column_config_flags::nwr_enum) {
         sql += "DROP TYPE IF EXISTS \"nwr_enum\" CASCADE;\n\n";
@@ -249,20 +244,10 @@ void Table::sql_data_definition() const {
                ");\n\n";
     }
 
-    sql += "CREATE TABLE \"";
-    sql += m_name;
-    sql += "\" (\n";
+    sql += "CREATE TABLE \"{}\" (\n"_format(m_name);
 
     for (const auto& column : m_columns) {
-        sql += "    \"";
-        sql += column.sql_name;
-        sql += "\" ";
-        sql += column.sql_type;
-        sql += ", -- %COL:";
-        sql += m_name;
-        sql += ":";
-        sql += column.sql_name;
-        sql += "%\n";
+        sql += "    \"{0}\" {1}, -- %COL:{2}:{0}%\n"_format(column.sql_name, column.sql_type, m_name);
     }
 
     const auto pos = sql.find_last_of(',');
@@ -271,22 +256,16 @@ void Table::sql_data_definition() const {
     }
     sql += ");\n\n";
 
-    sql += "\\copy \"";
-    sql += m_name;
-    sql += "\" from '";
-    sql += m_filename;
-    sql += "'\n\n";
+    sql += "\\copy \"{}\" from '{}'\n\n"_format(m_name, m_filename);
 
-    sql += "ANALYZE \"";
-    sql += m_name;
-    sql += "\";\n\n";
+    sql += "ANALYZE \"{}\";\n\n"_format(m_name);
 
     if (opts.with_primary_key) {
         sql += sql_primary_key();
     }
 
     if (m_column_flags & sql_column_config_flags::geom_index) {
-        sql += "-- CREATE INDEX \"" + m_name + "_geom_idx\" ON \"" + m_name + "\" USING GIST (geom); -- %GIDX:" + m_name + ":geom%\n";
+        sql += "-- CREATE INDEX \"{0}_geom_idx\" ON \"{0}\" USING GIST (geom); -- %GIDX:{0}:geom%\n"_format(m_name);
     }
 
     sql += '\n';

@@ -13,6 +13,19 @@ with the commands to create the tables and import the data. This allows you to
 change anything or add extra steps anywhere along the import process giving you
 even more flexibility.
 
+## Prerequisites
+
+You need the following libraries:
+
+* [Libosmium](https://osmcode.org/libosmium/)
+* [Protozero](https://github.com/mapbox/protzero/)
+* [expat](https://libexpat.github.io/)
+* [bzip2](http://www.bzip.org/)
+* [zlib](https://www.zlib.net/)
+* [Boost libraries](https://www.boost.org/)
+* [fmt](https://github.com/fmtlib/fmt)
+
+
 ## Build
 
 ```

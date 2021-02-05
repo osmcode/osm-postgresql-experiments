@@ -138,7 +138,7 @@ void parse_command_line(int argc, char* argv[], std::string& input_filename, std
         std::cout << "  FILENAME - output filename (leave empty for STDOUT)\n";
         std::cout << "  STREAM   - one of the following:\n";
 
-        print_streams();
+        std::cout << print_streams();
 
         std::cout << "  COLUMNS  - columns for this table (uses default when empty)\n";
         std::cout << '\n';

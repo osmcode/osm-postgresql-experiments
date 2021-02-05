@@ -3,7 +3,6 @@
 * quoting of non-jsonb members field
 * make sure there are no problems when there are no columns
 * tests for filename to tablename conversion
-* use {fmt}?
 * add "changeset" stream. changeset discussions?
 * timezones?
 * lat/lon as integers?
