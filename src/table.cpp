@@ -92,12 +92,13 @@ static const std::vector<column_config_type> column_config{
     {"e.", cft::closed_at_iso,       "closed_at",      "TIMESTAMP (0) WITHOUT TIME ZONE", {}},
     {"eu", cft::closed_at_sec,       "closed_at",      "INTEGER",                         {}},
     {"se", cft::timestamp_range,     "trange",         "TSTZRANGE",                       {}},
-    {"X.", cft::max_lon_real,        "max_lon",        "REAL",              {}},
-    {"Xi", cft::max_lon_int,         "max_lon",        "INTEGER",           {}},
-    {"Y.", cft::max_lat_real,        "max_lat",        "REAL",              {}},
-    {"Yi", cft::max_lat_int,         "max_lat",        "INTEGER",           {}},
-    {"b.", cft::bounds,              "bounds",         "BOX2D",             postgis},
-    {"C.", cft::comment_text,        "body",           "TEXT",              {}},
+    {"X.", cft::max_lon_real,        "max_lon",        "REAL",                            {}},
+    {"Xi", cft::max_lon_int,         "max_lon",        "INTEGER",                         {}},
+    {"Y.", cft::max_lat_real,        "max_lat",        "REAL",                            {}},
+    {"Yi", cft::max_lat_int,         "max_lat",        "INTEGER",                         {}},
+    {"b.", cft::bounds_box2d,        "bounds",         "BOX2D",                           postgis},
+    {"bp", cft::bounds_polygon,      "bounds",         "GEOMETRY(POLYGON, 4326)",         postgis},
+    {"C.", cft::comment_text,        "body",           "TEXT",                            {}},
 };
 
 std::string print_streams() {
@@ -854,9 +855,27 @@ void ChangesetsTable::add_changeset_row(const osmium::Changeset& changeset) {
                     m_buffer += "\\N";
                 }
                 break;
-            case column_type::bounds:
+            case column_type::bounds_box2d:
                 if (changeset.bounds().valid()) {
-                    m_buffer += "\\N"; // XXX TODO
+                    const auto& b = changeset.bounds();
+                    m_buffer += "BOX({} {},{} {})"_format(b.bottom_left().lon(), b.bottom_left().lat(), b.top_right().lon(), b.top_right().lat());
+                } else {
+                    m_buffer += "\\N";
+                }
+                break;
+            case column_type::bounds_polygon:
+                if (changeset.bounds().valid()) {
+                    const auto& b = changeset.bounds();
+                    std::array<osmium::NodeRef, 5> locations = {
+                        osmium::NodeRef{0, b.bottom_left()},
+                        osmium::NodeRef{0, osmium::Location{b.bottom_left().x(), b.top_right().y()}},
+                        osmium::NodeRef{0, b.top_right()},
+                        osmium::NodeRef{0, osmium::Location{b.top_right().x(), b.bottom_left().y()}},
+                        osmium::NodeRef{0, b.bottom_left()},
+                    };
+                    m_factory.polygon_start();
+                    m_factory.fill_polygon(locations.cbegin(), locations.cend());
+                    m_buffer += m_factory.polygon_finish(5);
                 } else {
                     m_buffer += "\\N";
                 }

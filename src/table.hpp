@@ -95,7 +95,8 @@ enum class column_type {
     max_lon_int,
     max_lat_real,
     max_lat_int,
-    bounds,
+    bounds_box2d,
+    bounds_polygon,
     comment_text,
 
 }; // enum class column_type
@@ -274,6 +275,8 @@ public:
 }; // class UsersTable
 
 class ChangesetsTable : public Table {
+
+    osmium::geom::WKBFactory<> m_factory{osmium::geom::wkb_type::ewkb, osmium::geom::out_type::hex};
 
 public:
 
