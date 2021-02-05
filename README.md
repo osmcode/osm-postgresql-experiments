@@ -15,6 +15,8 @@ even more flexibility.
 
 ## Prerequisites
 
+You need a C++ compiler with support for C++14.
+
 You need the following libraries:
 
 * [Libosmium](https://osmcode.org/libosmium/)

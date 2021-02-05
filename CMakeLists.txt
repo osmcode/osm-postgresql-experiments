@@ -50,7 +50,7 @@ include_directories(${OSMIUM_INCLUDE_DIRS})
 #-----------------------------------------------------------------------------
 if(NOT MSVC)
     if(NOT USE_CPP_VERSION)
-        set(USE_CPP_VERSION c++11)
+        set(USE_CPP_VERSION c++14)
     endif()
     message(STATUS "Use C++ version: ${USE_CPP_VERSION}")
     # following only available from cmake 2.8.12:

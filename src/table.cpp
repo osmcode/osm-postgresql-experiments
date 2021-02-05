@@ -944,38 +944,28 @@ void ChangesetCommentsTable::add_changeset_row(const osmium::Changeset& changese
 }
 
 static std::unique_ptr<Table> new_table(const std::string& filename, const stream_config_type& stream_config, const std::string& columns_string) {
-    std::unique_ptr<Table> ptr;
-
     switch (stream_config.stype) {
         case stream_type::objects:
-            ptr.reset(new ObjectsTable{filename, stream_config, columns_string});
-            break;
+            return std::make_unique<ObjectsTable>(filename, stream_config, columns_string);
         case stream_type::tags:
-            ptr.reset(new TagsTable{filename, stream_config, columns_string});
-            break;
+            return std::make_unique<TagsTable>(filename, stream_config, columns_string);
         case stream_type::way_nodes:
-            ptr.reset(new WayNodesTable{filename, stream_config, columns_string});
-            break;
+            return std::make_unique<WayNodesTable>(filename, stream_config, columns_string);
         case stream_type::members:
-            ptr.reset(new MembersTable{filename, stream_config, columns_string});
-            break;
+            return std::make_unique<MembersTable>(filename, stream_config, columns_string);
         case stream_type::users:
-            ptr.reset(new UsersTable{filename, stream_config, columns_string});
-            break;
+            return std::make_unique<UsersTable>(filename, stream_config, columns_string);
         case stream_type::changeset:
-            ptr.reset(new ChangesetsTable{filename, stream_config, columns_string});
-            break;
+            return std::make_unique<ChangesetsTable>(filename, stream_config, columns_string);
         case stream_type::changeset_tags:
-            ptr.reset(new ChangesetTagsTable{filename, stream_config, columns_string});
-            break;
+            return std::make_unique<ChangesetTagsTable>(filename, stream_config, columns_string);
         case stream_type::changeset_comments:
-            ptr.reset(new ChangesetCommentsTable{filename, stream_config, columns_string});
-            break;
+            return std::make_unique<ChangesetCommentsTable>(filename, stream_config, columns_string);
         default:
-            std::abort();
+            break;
     }
 
-    return ptr;
+    std::abort();
 }
 
 std::unique_ptr<Table> create_table(const Options& opts, const std::string& config_string) {
