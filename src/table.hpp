@@ -131,6 +131,7 @@ class Table {
     const stream_config_type* m_stream_config;
     sql_column_config_flags m_column_flags = none;
     int m_fd = -1;
+    bool m_delimiter = false;
 
 protected:
 
@@ -191,6 +192,21 @@ public:
         if (m_buffer.size() > 1000 * 1024) {
             flush();
         }
+    }
+
+    void start_column() {
+        static const fmt::string_view tab{"\t"};
+        if (m_delimiter) {
+            m_buffer.append(tab.begin(), tab.end());
+        } else {
+            m_delimiter = true;
+        }
+    }
+
+    void end_row() {
+        static const fmt::string_view newline{"\n"};
+        m_buffer.append(newline.begin(), newline.end());
+        m_delimiter = false;
     }
 
 private:

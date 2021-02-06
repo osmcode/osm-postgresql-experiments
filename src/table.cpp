@@ -362,13 +362,8 @@ static inline unsigned int quadtile(const osmium::Location location) noexcept {
 }
 
 void ObjectsTable::add_row(const osmium::OSMObject& object, const osmium::Timestamp next_version_timestamp) {
-    bool delimiter = false;
     for (const auto& column : m_columns) {
-        if (delimiter) {
-            fmt::format_to(m_buffer, "\t");
-        } else {
-            delimiter = true;
-        }
+        start_column();
         switch (column.format) {
             case column_type::objtype:
                 fmt::format_to(m_buffer, "{}", object.type());
@@ -501,19 +496,14 @@ void ObjectsTable::add_row(const osmium::OSMObject& object, const osmium::Timest
                 break;
         }
     }
-    fmt::format_to(m_buffer, "\n");
+    end_row();
 }
 
 void TagsTable::add_row(const osmium::OSMObject& object, const osmium::Timestamp next_version_timestamp) {
     std::size_t n = 0;
     for (const auto& tag : object.tags()) {
-        bool delimiter_columns = false;
         for (const auto& column : m_columns) {
-            if (delimiter_columns) {
-                fmt::format_to(m_buffer, "\t");
-            } else {
-                delimiter_columns = true;
-            }
+            start_column();
             switch (column.format) {
                 case column_type::objtype:
                     fmt::format_to(m_buffer, "{}", object.type());
@@ -578,8 +568,8 @@ void TagsTable::add_row(const osmium::OSMObject& object, const osmium::Timestamp
                     break;
             }
         }
+        end_row();
         ++n;
-        fmt::format_to(m_buffer, "\n");
     }
 }
 
@@ -587,13 +577,8 @@ void WayNodesTable::add_row(const osmium::OSMObject& object, const osmium::Times
     assert(object.type() == osmium::item_type::way);
     std::size_t n = 0;
     for (const auto& nr : static_cast<const osmium::Way&>(object).nodes()) {
-        bool delimiter_columns = false;
         for (const auto& column : m_columns) {
-            if (delimiter_columns) {
-                fmt::format_to(m_buffer, "\t");
-            } else {
-                delimiter_columns = true;
-            }
+            start_column();
             switch (column.format) {
                 case column_type::objtype:
                     fmt::format_to(m_buffer, "{}", object.type());
@@ -650,7 +635,7 @@ void WayNodesTable::add_row(const osmium::OSMObject& object, const osmium::Times
                     break;
             }
         }
-        fmt::format_to(m_buffer, "\n");
+        end_row();
         ++n;
     }
 }
@@ -673,13 +658,8 @@ void MembersTable::add_row(const osmium::OSMObject& object, const osmium::Timest
     assert(object.type() == osmium::item_type::relation);
     std::size_t n = 0;
     for (const auto& member : static_cast<const osmium::Relation&>(object).members()) {
-        bool delimiter_columns = false;
         for (const auto& column : m_columns) {
-            if (delimiter_columns) {
-                fmt::format_to(m_buffer, "\t");
-            } else {
-                delimiter_columns = true;
-            }
+            start_column();
             switch (column.format) {
                 case column_type::objtype:
                     fmt::format_to(m_buffer, "{}", object.type());
@@ -745,7 +725,7 @@ void MembersTable::add_row(const osmium::OSMObject& object, const osmium::Timest
                     break;
             }
         }
-        fmt::format_to(m_buffer, "\n");
+        end_row();
         ++n;
     }
 }
@@ -761,13 +741,8 @@ void UsersTable::add_row(const osmium::OSMObject& object, const osmium::Timestam
 
     m_user_ids.set(object.uid());
 
-    bool delimiter_columns = false;
     for (const auto& column : m_columns) {
-        if (delimiter_columns) {
-            fmt::format_to(m_buffer, "\t");
-        } else {
-            delimiter_columns = true;
-        }
+        start_column();
         switch (column.format) {
             case column_type::uid:
                 fmt::format_to(m_buffer, "{}", object.uid());
@@ -780,7 +755,7 @@ void UsersTable::add_row(const osmium::OSMObject& object, const osmium::Timestam
                 break;
         }
     }
-    fmt::format_to(m_buffer, "\n");
+    end_row();
 }
 
 std::string ChangesetsTable::sql_primary_key() const {
@@ -788,13 +763,8 @@ std::string ChangesetsTable::sql_primary_key() const {
 }
 
 void ChangesetsTable::add_changeset_row(const osmium::Changeset& changeset) {
-    bool delimiter_columns = false;
     for (const auto& column : m_columns) {
-        if (delimiter_columns) {
-            fmt::format_to(m_buffer, "\t");
-        } else {
-            delimiter_columns = true;
-        }
+        start_column();
         switch (column.format) {
             case column_type::changeset:
                 fmt::format_to(m_buffer, "{}", changeset.id());
@@ -931,7 +901,7 @@ void ChangesetsTable::add_changeset_row(const osmium::Changeset& changeset) {
                 break;
         }
     }
-    fmt::format_to(m_buffer, "\n");
+    end_row();
 }
 
 std::string ChangesetTagsTable::sql_primary_key() const {
@@ -941,13 +911,8 @@ std::string ChangesetTagsTable::sql_primary_key() const {
 void ChangesetTagsTable::add_changeset_row(const osmium::Changeset& changeset) {
     std::size_t n = 0;
     for (const auto& tag : changeset.tags()) {
-        bool delimiter_columns = false;
         for (const auto& column : m_columns) {
-            if (delimiter_columns) {
-                fmt::format_to(m_buffer, "\t");
-            } else {
-                delimiter_columns = true;
-            }
+            start_column();
             switch (column.format) {
                 case column_type::id:
                     fmt::format_to(m_buffer, "{}", changeset.id());
@@ -970,7 +935,7 @@ void ChangesetTagsTable::add_changeset_row(const osmium::Changeset& changeset) {
                     break;
             }
         }
-        fmt::format_to(m_buffer, "\n");
+        end_row();
         ++n;
     }
 }
@@ -982,13 +947,8 @@ std::string ChangesetCommentsTable::sql_primary_key() const {
 void ChangesetCommentsTable::add_changeset_row(const osmium::Changeset& changeset) {
     std::size_t n = 0;
     for (const auto& comment : changeset.discussion()) {
-        bool delimiter_columns = false;
         for (const auto& column : m_columns) {
-            if (delimiter_columns) {
-                fmt::format_to(m_buffer, "\t");
-            } else {
-                delimiter_columns = true;
-            }
+            start_column();
             switch (column.format) {
                 case column_type::id:
                     fmt::format_to(m_buffer, "{}", changeset.id());
@@ -1012,7 +972,7 @@ void ChangesetCommentsTable::add_changeset_row(const osmium::Changeset& changese
                     break;
             }
         }
-        fmt::format_to(m_buffer, "\n");
+        end_row();
         ++n;
     }
 }
