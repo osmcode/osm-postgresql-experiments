@@ -2,7 +2,7 @@
 #include "formatting.hpp"
 #include "util.hpp"
 
-void add_tags_json(std::string& buffer, const osmium::TagList& tags) {
+void add_tags_json(fmt::memory_buffer& buffer, const osmium::TagList& tags) {
     rapidjson::StringBuffer stream;
     rapidjson::Writer<rapidjson::StringBuffer> writer{stream};
 
@@ -34,7 +34,7 @@ static std::string escape_hstore(const char* str) {
     return result;
 }
 
-void add_tags_hstore(std::string& buffer, const osmium::TagList& tags) {
+void add_tags_hstore(fmt::memory_buffer& buffer, const osmium::TagList& tags) {
     if (tags.empty()) {
         return;
 
@@ -52,17 +52,20 @@ void add_tags_hstore(std::string& buffer, const osmium::TagList& tags) {
     append_pg_escaped(buffer, data.c_str());
 }
 
-void add_way_nodes_array(std::string& buffer, const osmium::WayNodeList& nodes) {
-    buffer += '{';
+void add_way_nodes_array(fmt::memory_buffer& buffer, const osmium::WayNodeList& nodes) {
+    fmt::format_to(buffer, "{}", "{");
+
+    bool delimiter = false;
     for (const auto& nr : nodes) {
-        buffer.append(std::to_string(nr.ref()));
-        buffer += ',';
+        if (delimiter) {
+            fmt::format_to(buffer, ",");
+        } else {
+            delimiter = true;
+        }
+        fmt::format_to(buffer, "{}", nr.ref());
     }
-    if (buffer.back() == ',') {
-        buffer.back() = '}';
-    } else {
-        buffer += '}';
-    }
+
+    fmt::format_to(buffer, "{}", "}");
 }
 
 static bool needs_quoting(const char* str) noexcept {
@@ -94,34 +97,32 @@ static std::string escape_str(const char* str) {
     return result;
 }
 
-void add_members_type(std::string& buffer, const osmium::RelationMemberList& members) {
-    buffer += '{';
+void add_members_type(fmt::memory_buffer& buffer, const osmium::RelationMemberList& members) {
+    fmt::format_to(buffer, "{}", "{");
 
+    bool delimiter = false;
     for (const auto& rm : members) {
-        buffer += "\"(";
-        buffer += osmium::item_type_to_char(rm.type());
-        buffer += ',';
-        buffer.append(std::to_string(rm.ref()));
+        if (delimiter) {
+            fmt::format_to(buffer, ",");
+        } else {
+            delimiter = true;
+        }
+
+        fmt::format_to(buffer, "\"({},{},", osmium::item_type_to_char(rm.type()), rm.ref());
         if (needs_quoting(rm.role())) {
-            buffer += R"FOO(,\\")FOO";
+            fmt::format_to(buffer, R"FOO(\\")FOO");
             const auto escaped_role = escape_str(rm.role());
             append_pg_escaped(buffer, escaped_role.c_str());
-            buffer += R"FOO(\\")",)FOO";
+            fmt::format_to(buffer, R"FOO(\\")")FOO");
         } else {
-            buffer += ',';
-            buffer += rm.role();
-            buffer += ")\",";
+            fmt::format_to(buffer, "{})\"", rm.role());
         }
     }
 
-    if (buffer.back() == ',') {
-        buffer.back() = '}';
-    } else {
-        buffer += '}';
-    }
+    fmt::format_to(buffer, "{}", "}");
 }
 
-void add_members_json(std::string& buffer, const osmium::RelationMemberList& members) {
+void add_members_json(fmt::memory_buffer& buffer, const osmium::RelationMemberList& members) {
     rapidjson::StringBuffer stream;
     rapidjson::Writer<rapidjson::StringBuffer> writer{stream};
 

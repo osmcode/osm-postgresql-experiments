@@ -101,6 +101,22 @@ static const std::vector<column_config_type> column_config{
     {"C.", cft::comment_text,        "body",           "TEXT",                            {}},
 };
 
+template <>
+struct fmt::formatter<osmium::item_type> : formatter<char> {
+
+    template <typename FormatContext>
+    auto format(const osmium::item_type& type, FormatContext& ctx) {
+        const char t = osmium::item_type_to_char(type);
+        return formatter<char>::format(t, ctx);
+    }
+
+};
+
+void add_null(fmt::memory_buffer& buffer) {
+    static const fmt::string_view null{"\\N"};
+    buffer.append(null.begin(), null.end());
+}
+
 std::string print_streams() {
     std::string out;
 
@@ -128,7 +144,7 @@ static const column_config_type& get_column_config(const std::string& format_str
         }
     }
 
-    throw std::runtime_error{"unknown column config: " + format_string};
+    throw std::runtime_error{"Unknown column config: " + format_string};
 }
 
 void Table::setup_columns() {
@@ -181,7 +197,7 @@ Table::Table(std::string filename, const stream_config_type& stream_config, std:
 }
 
 void Table::flush() {
-    if (!m_buffer.empty()) {
+    if (m_buffer.size() > 0) {
         const auto written = ::write(m_fd, m_buffer.data(), m_buffer.size());
         if (written < 0 || static_cast<std::size_t>(written) != m_buffer.size()) {
             throw std::runtime_error{"write error"};
@@ -283,14 +299,14 @@ void Table::sql_data_definition() const {
 }
 
 template <typename TFunc>
-void append_coordinate(const osmium::OSMObject& object, std::string& buffer, TFunc&& func) {
+void append_coordinate(const osmium::OSMObject& object, fmt::memory_buffer& buffer, TFunc&& func) {
     if (object.type() != osmium::item_type::node || !static_cast<const osmium::Node&>(object).location()) {
-        buffer += "\\N";
+        add_null(buffer);
         return;
     }
 
     const auto location = static_cast<const osmium::Node&>(object).location();
-    buffer.append(std::forward<TFunc>(func)(location));
+    fmt::format_to(buffer, "{}", std::forward<TFunc>(func)(location));
 }
 
 static inline unsigned int lon2x(double lon) noexcept {
@@ -317,57 +333,59 @@ static inline unsigned int quadtile(const osmium::Location location) noexcept {
 }
 
 void ObjectsTable::add_row(const osmium::OSMObject& object, const osmium::Timestamp next_version_timestamp) {
+    bool delimiter = false;
     for (const auto& column : m_columns) {
+        if (delimiter) {
+            fmt::format_to(m_buffer, "\t");
+        } else {
+            delimiter = true;
+        }
         switch (column.format) {
             case column_type::objtype:
-                m_buffer += osmium::item_type_to_char(object.type());
+                fmt::format_to(m_buffer, "{}", object.type());
                 break;
             case column_type::id:
-                m_buffer.append(std::to_string(object.id()));
+                fmt::format_to(m_buffer, "{}", object.id());
                 break;
             case column_type::orig_id:
                 if (object.type() == osmium::item_type::area) {
-                    m_buffer.append(std::to_string(static_cast<const osmium::Area&>(object).orig_id()));
+                    fmt::format_to(m_buffer, "{}", static_cast<const osmium::Area&>(object).orig_id());
                 } else {
-                    m_buffer += "\\N";
+                    add_null(m_buffer);
                 }
                 break;
             case column_type::orig_type:
                 if (object.type() == osmium::item_type::area) {
-                    m_buffer += static_cast<const osmium::Area&>(object).from_way() ? 'w' : 'r';
+                    fmt::format_to(m_buffer, "{}", static_cast<const osmium::Area&>(object).from_way() ? 'w' : 'r');
                 } else {
-                    m_buffer += "\\N";
+                    add_null(m_buffer);
                 }
                 break;
             case column_type::version:
-                m_buffer.append(std::to_string(object.version()));
+                fmt::format_to(m_buffer, "{}", object.version());
                 break;
             case column_type::deleted:
-                m_buffer += object.visible() ? 'f' : 't';
+                fmt::format_to(m_buffer, object.visible() ? "f" : "t");
                 break;
             case column_type::visible:
-                m_buffer += object.visible() ? 't' : 'f';
+                fmt::format_to(m_buffer, object.visible() ? "t" : "f");
                 break;
             case column_type::changeset:
-                m_buffer.append(std::to_string(object.changeset()));
+                fmt::format_to(m_buffer, "{}", object.changeset());
                 break;
             case column_type::timestamp_iso:
-                m_buffer.append(object.timestamp().to_iso());
+                fmt::format_to(m_buffer, "{}", object.timestamp().to_iso());
                 break;
             case column_type::timestamp_sec:
-                m_buffer.append(std::to_string(static_cast<uint64_t>(object.timestamp())));
+                fmt::format_to(m_buffer, "{}", static_cast<uint64_t>(object.timestamp()));
                 break;
             case column_type::timestamp_range:
-                m_buffer += '[';
-                m_buffer.append(object.timestamp().to_iso());
-                m_buffer += ',';
-                if (next_version_timestamp.valid() && next_version_timestamp >= object.timestamp()) {
-                    m_buffer.append(next_version_timestamp.to_iso());
-                }
-                m_buffer += ')';
+                fmt::format_to(m_buffer, "[{},{})", object.timestamp().to_iso(),
+                    (next_version_timestamp.valid() && next_version_timestamp >= object.timestamp()) ?
+                        next_version_timestamp.to_iso() : "");
                 break;
             case column_type::uid:
-                m_buffer.append(std::to_string(object.uid()));
+                fmt::format_to(m_buffer, "{}", object.uid());
                 break;
             case column_type::user:
                 append_pg_escaped(m_buffer, object.user());
@@ -399,7 +417,7 @@ void ObjectsTable::add_row(const osmium::OSMObject& object, const osmium::Timest
                 if (object.type() == osmium::item_type::way) {
                     add_way_nodes_array(m_buffer, static_cast<const osmium::Way&>(object).nodes());
                 } else {
-                    m_buffer += "\\N";
+                    add_null(m_buffer);
                 }
                 break;
             case column_type::members_jsonb:
@@ -408,104 +426,105 @@ void ObjectsTable::add_row(const osmium::OSMObject& object, const osmium::Timest
                 if (object.type() == osmium::item_type::relation) {
                     add_members_json(m_buffer, static_cast<const osmium::Relation&>(object).members());
                 } else {
-                    m_buffer += "\\N";
+                    add_null(m_buffer);
                 }
                 break;
             case column_type::members_type:
                 if (object.type() == osmium::item_type::relation) {
                     add_members_type(m_buffer, static_cast<const osmium::Relation&>(object).members());
                 } else {
-                    m_buffer += "\\N";
+                    add_null(m_buffer);
                 }
                 break;
             case column_type::geometry:
                 /* fallthrough */
             case column_type::geometry_point:
                 if (object.type() == osmium::item_type::node && static_cast<const osmium::Node&>(object).location()) {
-                    m_buffer.append(m_factory.create_point(static_cast<const osmium::Node&>(object)));
+                    fmt::format_to(m_buffer, "{}", m_factory.create_point(static_cast<const osmium::Node&>(object)));
                 } else {
-                    m_buffer += "\\N";
+                    add_null(m_buffer);
                 }
                 break;
             case column_type::geometry_linestring:
                 if (object.type() == osmium::item_type::way) {
                     try {
-                        m_buffer.append(m_factory.create_linestring(static_cast<const osmium::Way&>(object)));
+                        fmt::format_to(m_buffer, "{}", m_factory.create_linestring(static_cast<const osmium::Way&>(object)));
                     } catch (const osmium::geometry_error&) {
-                        m_buffer += "\\N";
+                        add_null(m_buffer);
                     }
                 } else {
-                    m_buffer += "\\N";
+                    add_null(m_buffer);
                 }
                 break;
             case column_type::geometry_polygon:
                 if (object.type() == osmium::item_type::area) {
                     try {
-                        m_buffer.append(m_factory.create_multipolygon(static_cast<const osmium::Area&>(object)));
+                        fmt::format_to(m_buffer, m_factory.create_multipolygon(static_cast<const osmium::Area&>(object)));
                     } catch (const osmium::geometry_error&) {
-                        m_buffer += "\\N";
+                        add_null(m_buffer);
                     }
                 } else {
-                    m_buffer += "\\N";
+                    add_null(m_buffer);
                 }
                 break;
             case column_type::redaction:
-                m_buffer += "\\N";
+                add_null(m_buffer);
                 break;
             default:
                 break;
         }
-        m_buffer += '\t';
     }
-    m_buffer.back() = '\n';
+    fmt::format_to(m_buffer, "\n");
 }
 
 void TagsTable::add_row(const osmium::OSMObject& object, const osmium::Timestamp next_version_timestamp) {
     std::size_t n = 0;
     for (const auto& tag : object.tags()) {
+        bool delimiter_columns = false;
         for (const auto& column : m_columns) {
+            if (delimiter_columns) {
+                fmt::format_to(m_buffer, "\t");
+            } else {
+                delimiter_columns = true;
+            }
             switch (column.format) {
                 case column_type::objtype:
-                    m_buffer += osmium::item_type_to_char(object.type());
+                    fmt::format_to(m_buffer, "{}", object.type());
                     break;
                 case column_type::id:
-                    m_buffer.append(std::to_string(object.id()));
+                    fmt::format_to(m_buffer, "{}", object.id());
                     break;
                 case column_type::version:
-                    m_buffer.append(std::to_string(object.version()));
+                    fmt::format_to(m_buffer, "{}", object.version());
                     break;
                 case column_type::deleted:
-                    m_buffer += object.visible() ? 'f' : 't';
+                    fmt::format_to(m_buffer, object.visible() ? "f" : "t");
                     break;
                 case column_type::visible:
-                    m_buffer += object.visible() ? 't' : 'f';
+                    fmt::format_to(m_buffer, object.visible() ? "t" : "f");
                     break;
                 case column_type::changeset:
-                    m_buffer.append(std::to_string(object.changeset()));
+                    fmt::format_to(m_buffer, "{}", object.changeset());
                     break;
                 case column_type::timestamp_iso:
-                    m_buffer.append(object.timestamp().to_iso());
+                    fmt::format_to(m_buffer, "{}", object.timestamp().to_iso());
                     break;
                 case column_type::timestamp_sec:
-                    m_buffer.append(std::to_string(static_cast<uint64_t>(object.timestamp())));
+                    fmt::format_to(m_buffer, "{}", static_cast<uint64_t>(object.timestamp()));
                     break;
                 case column_type::timestamp_range:
-                    m_buffer += '[';
-                    m_buffer.append(object.timestamp().to_iso());
-                    m_buffer += ',';
-                    if (next_version_timestamp.valid() && next_version_timestamp >= object.timestamp()) {
-                        m_buffer.append(next_version_timestamp.to_iso());
-                    }
-                    m_buffer += ')';
+                    fmt::format_to(m_buffer, "[{},{})", object.timestamp().to_iso(),
+                        (next_version_timestamp.valid() && next_version_timestamp >= object.timestamp()) ?
+                            next_version_timestamp.to_iso() : "");
                     break;
                 case column_type::uid:
-                    m_buffer.append(std::to_string(object.uid()));
+                    fmt::format_to(m_buffer, "{}", object.uid());
                     break;
                 case column_type::user:
                     append_pg_escaped(m_buffer, object.user());
                     break;
                 case column_type::tag_seq:
-                    m_buffer.append(std::to_string(n));
+                    fmt::format_to(m_buffer, "{}", n);
                     break;
                 case column_type::tag_key:
                     append_pg_escaped(m_buffer, tag.key());
@@ -515,7 +534,7 @@ void TagsTable::add_row(const osmium::OSMObject& object, const osmium::Timestamp
                     break;
                 case column_type::tag_kv:
                     append_pg_escaped(m_buffer, tag.key());
-                    m_buffer += '=';
+                    fmt::format_to(m_buffer, "=");
                     append_pg_escaped(m_buffer, tag.value());
                     break;
                 case column_type::lon_real:
@@ -533,10 +552,9 @@ void TagsTable::add_row(const osmium::OSMObject& object, const osmium::Timestamp
                 default:
                     break;
             }
-            m_buffer += '\t';
         }
-        m_buffer.back() = '\n';
         ++n;
+        fmt::format_to(m_buffer, "\n");
     }
 }
 
@@ -544,43 +562,45 @@ void WayNodesTable::add_row(const osmium::OSMObject& object, const osmium::Times
     assert(object.type() == osmium::item_type::way);
     std::size_t n = 0;
     for (const auto& nr : static_cast<const osmium::Way&>(object).nodes()) {
+        bool delimiter_columns = false;
         for (const auto& column : m_columns) {
+            if (delimiter_columns) {
+                fmt::format_to(m_buffer, "\t");
+            } else {
+                delimiter_columns = true;
+            }
             switch (column.format) {
                 case column_type::objtype:
-                    m_buffer += osmium::item_type_to_char(object.type());
+                    fmt::format_to(m_buffer, "{}", object.type());
                     break;
                 case column_type::id:
-                    m_buffer.append(std::to_string(object.id()));
+                    fmt::format_to(m_buffer, "{}", object.id());
                     break;
                 case column_type::version:
-                    m_buffer.append(std::to_string(object.version()));
+                    fmt::format_to(m_buffer, "{}", object.version());
                     break;
                 case column_type::deleted:
-                    m_buffer += object.visible() ? 'f' : 't';
+                    fmt::format_to(m_buffer, object.visible() ? "f" : "t");
                     break;
                 case column_type::visible:
-                    m_buffer += object.visible() ? 't' : 'f';
+                    fmt::format_to(m_buffer, object.visible() ? "t" : "f");
                     break;
                 case column_type::changeset:
-                    m_buffer.append(std::to_string(object.changeset()));
+                    fmt::format_to(m_buffer, "{}", object.changeset());
                     break;
                 case column_type::timestamp_iso:
-                    m_buffer.append(object.timestamp().to_iso());
+                    fmt::format_to(m_buffer, "{}", object.timestamp().to_iso());
                     break;
                 case column_type::timestamp_sec:
-                    m_buffer.append(std::to_string(static_cast<uint64_t>(object.timestamp())));
+                    fmt::format_to(m_buffer, "{}", static_cast<uint64_t>(object.timestamp()));
                     break;
                 case column_type::timestamp_range:
-                    m_buffer += '[';
-                    m_buffer.append(object.timestamp().to_iso());
-                    m_buffer += ',';
-                    if (next_version_timestamp.valid() && next_version_timestamp >= object.timestamp()) {
-                        m_buffer.append(next_version_timestamp.to_iso());
-                    }
-                    m_buffer += ')';
+                    fmt::format_to(m_buffer, "[{},{})", object.timestamp().to_iso(),
+                        (next_version_timestamp.valid() && next_version_timestamp >= object.timestamp()) ?
+                            next_version_timestamp.to_iso() : "");
                     break;
                 case column_type::uid:
-                    m_buffer.append(std::to_string(object.uid()));
+                    fmt::format_to(m_buffer, "{}", object.uid());
                     break;
                 case column_type::user:
                     append_pg_escaped(m_buffer, object.user());
@@ -598,17 +618,16 @@ void WayNodesTable::add_row(const osmium::OSMObject& object, const osmium::Times
                     append_coordinate(object, m_buffer, [](osmium::Location location) -> std::string { return std::to_string(location.y()); });
                     break;
                 case column_type::node_seq:
-                    m_buffer.append(std::to_string(n));
+                    fmt::format_to(m_buffer, "{}", n);
                     break;
                 case column_type::node_ref:
-                    m_buffer.append(std::to_string(nr.ref()));
+                    fmt::format_to(m_buffer, "{}", nr.ref());
                     break;
                 default:
                     break;
             }
-            m_buffer += '\t';
         }
-        m_buffer.back() = '\n';
+        fmt::format_to(m_buffer, "\n");
         ++n;
     }
 }
@@ -631,43 +650,45 @@ void MembersTable::add_row(const osmium::OSMObject& object, const osmium::Timest
     assert(object.type() == osmium::item_type::relation);
     std::size_t n = 0;
     for (const auto& member : static_cast<const osmium::Relation&>(object).members()) {
+        bool delimiter_columns = false;
         for (const auto& column : m_columns) {
+            if (delimiter_columns) {
+                fmt::format_to(m_buffer, "\t");
+            } else {
+                delimiter_columns = true;
+            }
             switch (column.format) {
                 case column_type::objtype:
-                    m_buffer += osmium::item_type_to_char(object.type());
+                    fmt::format_to(m_buffer, "{}", object.type());
                     break;
                 case column_type::id:
-                    m_buffer.append(std::to_string(object.id()));
+                    fmt::format_to(m_buffer, "{}", object.id());
                     break;
                 case column_type::version:
-                    m_buffer.append(std::to_string(object.version()));
+                    fmt::format_to(m_buffer, "{}", object.version());
                     break;
                 case column_type::deleted:
-                    m_buffer += object.visible() ? 'f' : 't';
+                    fmt::format_to(m_buffer, object.visible() ? "f" : "t");
                     break;
                 case column_type::visible:
-                    m_buffer += object.visible() ? 't' : 'f';
+                    fmt::format_to(m_buffer, object.visible() ? "t" : "f");
                     break;
                 case column_type::changeset:
-                    m_buffer.append(std::to_string(object.changeset()));
+                    fmt::format_to(m_buffer, "{}", object.changeset());
                     break;
                 case column_type::timestamp_iso:
-                    m_buffer.append(object.timestamp().to_iso());
+                    fmt::format_to(m_buffer, "{}", object.timestamp().to_iso());
                     break;
                 case column_type::timestamp_sec:
-                    m_buffer.append(std::to_string(static_cast<uint64_t>(object.timestamp())));
+                    fmt::format_to(m_buffer, "{}", static_cast<uint64_t>(object.timestamp()));
                     break;
                 case column_type::timestamp_range:
-                    m_buffer += '[';
-                    m_buffer.append(object.timestamp().to_iso());
-                    m_buffer += ',';
-                    if (next_version_timestamp.valid() && next_version_timestamp >= object.timestamp()) {
-                        m_buffer.append(next_version_timestamp.to_iso());
-                    }
-                    m_buffer += ')';
+                    fmt::format_to(m_buffer, "[{},{})", object.timestamp().to_iso(),
+                        (next_version_timestamp.valid() && next_version_timestamp >= object.timestamp()) ?
+                            next_version_timestamp.to_iso() : "");
                     break;
                 case column_type::uid:
-                    m_buffer.append(std::to_string(object.uid()));
+                    fmt::format_to(m_buffer, "{}", object.uid());
                     break;
                 case column_type::user:
                     append_pg_escaped(m_buffer, object.user());
@@ -685,16 +706,16 @@ void MembersTable::add_row(const osmium::OSMObject& object, const osmium::Timest
                     append_coordinate(object, m_buffer, [](osmium::Location location) -> std::string { return std::to_string(location.y()); });
                     break;
                 case column_type::member_seq:
-                    m_buffer += std::to_string(n);
+                    fmt::format_to(m_buffer, "{}", n);
                     break;
                 case column_type::member_type_char:
-                    m_buffer += osmium::item_type_to_char(member.type());
+                    fmt::format_to(m_buffer, "{}", member.type());
                     break;
                 case column_type::member_type_enum:
-                    m_buffer += item_type_to_enum(member.type());
+                    fmt::format_to(m_buffer, "{}", item_type_to_enum(member.type()));
                     break;
                 case column_type::member_ref:
-                    m_buffer += std::to_string(member.ref());
+                    fmt::format_to(m_buffer, "{}", member.ref());
                     break;
                 case column_type::member_role:
                     append_pg_escaped(m_buffer, member.role());
@@ -702,9 +723,8 @@ void MembersTable::add_row(const osmium::OSMObject& object, const osmium::Timest
                 default:
                     break;
             }
-            m_buffer += '\t';
         }
-        m_buffer.back() = '\n';
+        fmt::format_to(m_buffer, "\n");
         ++n;
     }
 }
@@ -720,21 +740,26 @@ void UsersTable::add_row(const osmium::OSMObject& object, const osmium::Timestam
 
     m_user_ids.set(object.uid());
 
+    bool delimiter_columns = false;
     for (const auto& column : m_columns) {
+        if (delimiter_columns) {
+            fmt::format_to(m_buffer, "\t");
+        } else {
+            delimiter_columns = true;
+        }
         switch (column.format) {
             case column_type::uid:
-                m_buffer.append(std::to_string(object.uid()));
+                fmt::format_to(m_buffer, "{}", object.uid());
                 break;
             case column_type::user:
                 append_pg_escaped(m_buffer, object.user());
                 break;
             default:
-                m_buffer += "\\N";
+                add_null(m_buffer);
                 break;
         }
-        m_buffer += '\t';
     }
-    m_buffer.back() = '\n';
+    fmt::format_to(m_buffer, "\n");
 }
 
 std::string ChangesetsTable::sql_primary_key() const {
@@ -742,54 +767,54 @@ std::string ChangesetsTable::sql_primary_key() const {
 }
 
 void ChangesetsTable::add_changeset_row(const osmium::Changeset& changeset) {
+    bool delimiter_columns = false;
     for (const auto& column : m_columns) {
+        if (delimiter_columns) {
+            fmt::format_to(m_buffer, "\t");
+        } else {
+            delimiter_columns = true;
+        }
         switch (column.format) {
             case column_type::changeset:
-                m_buffer.append(std::to_string(changeset.id()));
+                fmt::format_to(m_buffer, "{}", changeset.id());
                 break;
             case column_type::uid:
-                m_buffer.append(std::to_string(changeset.uid()));
+                fmt::format_to(m_buffer, "{}", changeset.uid());
                 break;
             case column_type::user:
                 append_pg_escaped(m_buffer, changeset.user());
                 break;
             case column_type::num_changes:
-                m_buffer.append(std::to_string(changeset.num_changes()));
+                fmt::format_to(m_buffer, "{}", changeset.num_changes());
                 break;
             case column_type::comments_count:
-                m_buffer.append(std::to_string(changeset.num_comments()));
+                fmt::format_to(m_buffer, "{}", changeset.num_comments());
                 break;
             case column_type::open:
-                m_buffer += changeset.open() ? 't' : 'f';
+                fmt::format_to(m_buffer, "{}", changeset.open() ? 't' : 'f');
                 break;
             case column_type::created_at_iso:
-                m_buffer.append(changeset.created_at().to_iso());
+                fmt::format_to(m_buffer, "{}", changeset.created_at().to_iso());
                 break;
             case column_type::created_at_sec:
-                m_buffer.append(std::to_string(static_cast<uint64_t>(changeset.created_at())));
+                fmt::format_to(m_buffer, "{}", static_cast<uint64_t>(changeset.created_at()));
                 break;
             case column_type::closed_at_iso:
                 if (changeset.closed_at().valid()) {
-                    m_buffer.append(changeset.closed_at().to_iso());
+                    fmt::format_to(m_buffer, "{}", changeset.closed_at().to_iso());
                 } else {
-                    m_buffer += "\\N";
+                    add_null(m_buffer);
                 }
                 break;
             case column_type::closed_at_sec:
                 if (changeset.closed_at().valid()) {
-                    m_buffer.append(std::to_string(static_cast<uint64_t>(changeset.closed_at())));
+                    fmt::format_to(m_buffer, "{}", static_cast<uint64_t>(changeset.closed_at()));
                 } else {
-                    m_buffer += "\\N";
+                    add_null(m_buffer);
                 }
                 break;
             case column_type::timestamp_range:
-                m_buffer += '[';
-                m_buffer.append(changeset.created_at().to_iso());
-                m_buffer += ',';
-                if (changeset.closed_at().valid()) {
-                    m_buffer.append(changeset.closed_at().to_iso());
-                }
-                m_buffer += ']';
+                fmt::format_to(m_buffer, "[{},{})", changeset.created_at().to_iso(), changeset.closed_at().valid() ? changeset.closed_at().to_iso() : "");
                 break;
             case column_type::tags_jsonb:
                 /* fallthrough */
@@ -801,66 +826,66 @@ void ChangesetsTable::add_changeset_row(const osmium::Changeset& changeset) {
                 break;
             case column_type::lon_real:
                 if (changeset.bounds().valid()) {
-                    m_buffer.append(std::to_string(changeset.bounds().bottom_left().lon()));
+                    fmt::format_to(m_buffer, "{:.7f}", changeset.bounds().bottom_left().lon());
                 } else {
-                    m_buffer += "\\N";
+                    add_null(m_buffer);
                 }
                 break;
             case column_type::lon_int:
                 if (changeset.bounds().valid()) {
-                    m_buffer.append(std::to_string(changeset.bounds().bottom_left().x()));
+                    fmt::format_to(m_buffer, "{}", changeset.bounds().bottom_left().x());
                 } else {
-                    m_buffer += "\\N";
+                    add_null(m_buffer);
                 }
                 break;
             case column_type::lat_real:
                 if (changeset.bounds().valid()) {
-                    m_buffer.append(std::to_string(changeset.bounds().bottom_left().lat()));
+                    fmt::format_to(m_buffer, "{:.7f}", changeset.bounds().bottom_left().lat());
                 } else {
-                    m_buffer += "\\N";
+                    add_null(m_buffer);
                 }
                 break;
             case column_type::lat_int:
                 if (changeset.bounds().valid()) {
-                    m_buffer.append(std::to_string(changeset.bounds().bottom_left().y()));
+                    fmt::format_to(m_buffer, "{}", changeset.bounds().bottom_left().y());
                 } else {
-                    m_buffer += "\\N";
+                    add_null(m_buffer);
                 }
                 break;
             case column_type::max_lon_real:
                 if (changeset.bounds().valid()) {
-                    m_buffer.append(std::to_string(changeset.bounds().top_right().lon()));
+                    fmt::format_to(m_buffer, "{:.7f}", changeset.bounds().top_right().lon());
                 } else {
-                    m_buffer += "\\N";
+                    add_null(m_buffer);
                 }
                 break;
             case column_type::max_lon_int:
                 if (changeset.bounds().valid()) {
-                    m_buffer.append(std::to_string(changeset.bounds().top_right().x()));
+                    fmt::format_to(m_buffer, "{}", changeset.bounds().top_right().x());
                 } else {
-                    m_buffer += "\\N";
+                    add_null(m_buffer);
                 }
                 break;
             case column_type::max_lat_real:
                 if (changeset.bounds().valid()) {
-                    m_buffer.append(std::to_string(changeset.bounds().top_right().lat()));
+                    fmt::format_to(m_buffer, "{:.7f}", changeset.bounds().top_right().lat());
                 } else {
-                    m_buffer += "\\N";
+                    add_null(m_buffer);
                 }
                 break;
             case column_type::max_lat_int:
                 if (changeset.bounds().valid()) {
-                    m_buffer.append(std::to_string(changeset.bounds().top_right().y()));
+                    fmt::format_to(m_buffer, "{}", changeset.bounds().top_right().y());
                 } else {
-                    m_buffer += "\\N";
+                    add_null(m_buffer);
                 }
                 break;
             case column_type::bounds_box2d:
                 if (changeset.bounds().valid()) {
                     const auto& b = changeset.bounds();
-                    m_buffer += "BOX({} {},{} {})"_format(b.bottom_left().lon(), b.bottom_left().lat(), b.top_right().lon(), b.top_right().lat());
+                    fmt::format_to(m_buffer, "BOX({} {},{} {})", b.bottom_left().lon(), b.bottom_left().lat(), b.top_right().lon(), b.top_right().lat());
                 } else {
-                    m_buffer += "\\N";
+                    add_null(m_buffer);
                 }
                 break;
             case column_type::bounds_polygon:
@@ -875,18 +900,17 @@ void ChangesetsTable::add_changeset_row(const osmium::Changeset& changeset) {
                     };
                     m_factory.polygon_start();
                     m_factory.fill_polygon(locations.cbegin(), locations.cend());
-                    m_buffer += m_factory.polygon_finish(5);
+                    fmt::format_to(m_buffer, m_factory.polygon_finish(5));
                 } else {
-                    m_buffer += "\\N";
+                    add_null(m_buffer);
                 }
                 break;
             default:
-                m_buffer += "\\N";
+                add_null(m_buffer);
                 break;
         }
-        m_buffer += '\t';
     }
-    m_buffer.back() = '\n';
+    fmt::format_to(m_buffer, "\n");
 }
 
 std::string ChangesetTagsTable::sql_primary_key() const {
@@ -896,13 +920,19 @@ std::string ChangesetTagsTable::sql_primary_key() const {
 void ChangesetTagsTable::add_changeset_row(const osmium::Changeset& changeset) {
     std::size_t n = 0;
     for (const auto& tag : changeset.tags()) {
+        bool delimiter_columns = false;
         for (const auto& column : m_columns) {
+            if (delimiter_columns) {
+                fmt::format_to(m_buffer, "\t");
+            } else {
+                delimiter_columns = true;
+            }
             switch (column.format) {
                 case column_type::id:
-                    m_buffer.append(std::to_string(changeset.id()));
+                    fmt::format_to(m_buffer, "{}", changeset.id());
                     break;
                 case column_type::tag_seq:
-                    m_buffer.append(std::to_string(n));
+                    fmt::format_to(m_buffer, "{}", n);
                     break;
                 case column_type::tag_key:
                     append_pg_escaped(m_buffer, tag.key());
@@ -912,15 +942,14 @@ void ChangesetTagsTable::add_changeset_row(const osmium::Changeset& changeset) {
                     break;
                 case column_type::tag_kv:
                     append_pg_escaped(m_buffer, tag.key());
-                    m_buffer += '=';
+                    fmt::format_to(m_buffer, "=");
                     append_pg_escaped(m_buffer, tag.value());
                     break;
                 default:
                     break;
             }
-            m_buffer += '\t';
         }
-        m_buffer.back() = '\n';
+        fmt::format_to(m_buffer, "\n");
         ++n;
     }
 }
@@ -932,22 +961,28 @@ std::string ChangesetCommentsTable::sql_primary_key() const {
 void ChangesetCommentsTable::add_changeset_row(const osmium::Changeset& changeset) {
     std::size_t n = 0;
     for (const auto& comment : changeset.discussion()) {
+        bool delimiter_columns = false;
         for (const auto& column : m_columns) {
+            if (delimiter_columns) {
+                fmt::format_to(m_buffer, "\t");
+            } else {
+                delimiter_columns = true;
+            }
             switch (column.format) {
                 case column_type::id:
-                    m_buffer.append(std::to_string(changeset.id()));
+                    fmt::format_to(m_buffer, "{}", changeset.id());
                     break;
                 case column_type::uid:
-                    m_buffer.append(std::to_string(comment.uid()));
+                    fmt::format_to(m_buffer, "{}", changeset.uid());
                     break;
                 case column_type::user:
                     append_pg_escaped(m_buffer, comment.user());
                     break;
                 case column_type::timestamp_iso:
-                    m_buffer.append(comment.date().to_iso());
+                    fmt::format_to(m_buffer, "{}", comment.date().to_iso());
                     break;
                 case column_type::timestamp_sec:
-                    m_buffer.append(std::to_string(static_cast<uint64_t>(comment.date())));
+                    fmt::format_to(m_buffer, "{}", static_cast<uint64_t>(comment.date()));
                     break;
                 case column_type::comment_text:
                     append_pg_escaped(m_buffer, comment.text());
@@ -955,9 +990,8 @@ void ChangesetCommentsTable::add_changeset_row(const osmium::Changeset& changese
                 default:
                     break;
             }
-            m_buffer += '\t';
         }
-        m_buffer.back() = '\n';
+        fmt::format_to(m_buffer, "\n");
         ++n;
     }
 }

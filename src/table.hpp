@@ -1,5 +1,6 @@
 #pragma once
 
+#include "format.hpp"
 #include "formatting.hpp"
 #include "options.hpp"
 #include "util.hpp"
@@ -134,7 +135,7 @@ class Table {
 protected:
 
     std::vector<column_config_type> m_columns{};
-    std::string m_buffer{};
+    fmt::memory_buffer m_buffer{};
 
 public:
 
