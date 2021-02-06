@@ -10,18 +10,23 @@ std::pair<std::string, std::string> split(const std::string& input, char delimit
 }
 
 static void escape_char(fmt::memory_buffer& buffer, const char c) noexcept {
+    const fmt::string_view backslash{"\\\\"};
+    const fmt::string_view newline{"\\n"};
+    const fmt::string_view cr{"\\r"};
+    const fmt::string_view tab{"\\t"};
+
     switch (c) {
         case '\\':
-            fmt::format_to(buffer, "\\\\");
+            buffer.append(backslash.begin(), backslash.end());
             break;
         case '\n':
-            fmt::format_to(buffer, "\\n");
+            buffer.append(newline.begin(), newline.end());
             break;
         case '\r':
-            fmt::format_to(buffer, "\\r");
+            buffer.append(cr.begin(), cr.end());
             break;
         case '\t':
-            fmt::format_to(buffer, "\\t");
+            buffer.append(tab.begin(), tab.end());
             break;
         default:
             buffer.append(&c, std::next(&c));

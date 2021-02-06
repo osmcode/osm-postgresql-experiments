@@ -2,6 +2,23 @@
 #include "formatting.hpp"
 #include "util.hpp"
 
+void add_null(fmt::memory_buffer& buffer) {
+    const fmt::string_view null{"\\N"};
+    buffer.append(null.begin(), null.end());
+}
+
+void add_char(fmt::memory_buffer& buffer, char c) {
+    buffer.append(&c, std::next(&c));
+}
+
+void add_bool(fmt::memory_buffer& buffer, bool value, char tv, char fv) {
+    if (value) {
+        add_char(buffer, tv);
+    } else {
+        add_char(buffer, fv);
+    }
+}
+
 void add_tags_json(fmt::memory_buffer& buffer, const osmium::TagList& tags) {
     rapidjson::StringBuffer stream;
     rapidjson::Writer<rapidjson::StringBuffer> writer{stream};
@@ -53,19 +70,19 @@ void add_tags_hstore(fmt::memory_buffer& buffer, const osmium::TagList& tags) {
 }
 
 void add_way_nodes_array(fmt::memory_buffer& buffer, const osmium::WayNodeList& nodes) {
-    fmt::format_to(buffer, "{}", "{");
+    add_char(buffer, '{');
 
     bool delimiter = false;
     for (const auto& nr : nodes) {
         if (delimiter) {
-            fmt::format_to(buffer, ",");
+            add_char(buffer, ',');
         } else {
             delimiter = true;
         }
         fmt::format_to(buffer, "{}", nr.ref());
     }
 
-    fmt::format_to(buffer, "{}", "}");
+    add_char(buffer, '}');
 }
 
 static bool needs_quoting(const char* str) noexcept {
@@ -98,12 +115,12 @@ static std::string escape_str(const char* str) {
 }
 
 void add_members_type(fmt::memory_buffer& buffer, const osmium::RelationMemberList& members) {
-    fmt::format_to(buffer, "{}", "{");
+    add_char(buffer, '{');
 
     bool delimiter = false;
     for (const auto& rm : members) {
         if (delimiter) {
-            fmt::format_to(buffer, ",");
+            add_char(buffer, ',');
         } else {
             delimiter = true;
         }
@@ -119,7 +136,7 @@ void add_members_type(fmt::memory_buffer& buffer, const osmium::RelationMemberLi
         }
     }
 
-    fmt::format_to(buffer, "{}", "}");
+    add_char(buffer, '}');
 }
 
 void add_members_json(fmt::memory_buffer& buffer, const osmium::RelationMemberList& members) {

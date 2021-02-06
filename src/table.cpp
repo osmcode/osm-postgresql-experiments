@@ -141,11 +141,6 @@ struct fmt::formatter<osmium::item_type> : formatter<char> {
 
 };
 
-void add_null(fmt::memory_buffer& buffer) {
-    static const fmt::string_view null{"\\N"};
-    buffer.append(null.begin(), null.end());
-}
-
 std::string print_streams() {
     std::string out;
 
@@ -380,7 +375,7 @@ void ObjectsTable::add_row(const osmium::OSMObject& object, const osmium::Timest
                 break;
             case column_type::orig_type:
                 if (object.type() == osmium::item_type::area) {
-                    fmt::format_to(m_buffer, "{}", static_cast<const osmium::Area&>(object).from_way() ? 'w' : 'r');
+                    add_bool(m_buffer, static_cast<const osmium::Area&>(object).from_way(), 'w', 'r');
                 } else {
                     add_null(m_buffer);
                 }
@@ -389,10 +384,10 @@ void ObjectsTable::add_row(const osmium::OSMObject& object, const osmium::Timest
                 fmt::format_to(m_buffer, "{}", object.version());
                 break;
             case column_type::deleted:
-                fmt::format_to(m_buffer, object.visible() ? "f" : "t");
+                add_bool(m_buffer, object.deleted());
                 break;
             case column_type::visible:
-                fmt::format_to(m_buffer, object.visible() ? "t" : "f");
+                add_bool(m_buffer, object.visible());
                 break;
             case column_type::changeset:
                 fmt::format_to(m_buffer, "{}", object.changeset());
@@ -515,10 +510,10 @@ void TagsTable::add_row(const osmium::OSMObject& object, const osmium::Timestamp
                     fmt::format_to(m_buffer, "{}", object.version());
                     break;
                 case column_type::deleted:
-                    fmt::format_to(m_buffer, object.visible() ? "f" : "t");
+                    add_bool(m_buffer, object.deleted());
                     break;
                 case column_type::visible:
-                    fmt::format_to(m_buffer, object.visible() ? "t" : "f");
+                    add_bool(m_buffer, object.visible());
                     break;
                 case column_type::changeset:
                     fmt::format_to(m_buffer, "{}", object.changeset());
@@ -549,7 +544,7 @@ void TagsTable::add_row(const osmium::OSMObject& object, const osmium::Timestamp
                     break;
                 case column_type::tag_kv:
                     append_pg_escaped(m_buffer, tag.key());
-                    fmt::format_to(m_buffer, "=");
+                    add_char(m_buffer, '=');
                     append_pg_escaped(m_buffer, tag.value());
                     break;
                 case column_type::lon_real:
@@ -590,10 +585,10 @@ void WayNodesTable::add_row(const osmium::OSMObject& object, const osmium::Times
                     fmt::format_to(m_buffer, "{}", object.version());
                     break;
                 case column_type::deleted:
-                    fmt::format_to(m_buffer, object.visible() ? "f" : "t");
+                    add_bool(m_buffer, object.deleted());
                     break;
                 case column_type::visible:
-                    fmt::format_to(m_buffer, object.visible() ? "t" : "f");
+                    add_bool(m_buffer, object.visible());
                     break;
                 case column_type::changeset:
                     fmt::format_to(m_buffer, "{}", object.changeset());
@@ -671,10 +666,10 @@ void MembersTable::add_row(const osmium::OSMObject& object, const osmium::Timest
                     fmt::format_to(m_buffer, "{}", object.version());
                     break;
                 case column_type::deleted:
-                    fmt::format_to(m_buffer, object.visible() ? "f" : "t");
+                    add_bool(m_buffer, object.deleted());
                     break;
                 case column_type::visible:
-                    fmt::format_to(m_buffer, object.visible() ? "t" : "f");
+                    add_bool(m_buffer, object.visible());
                     break;
                 case column_type::changeset:
                     fmt::format_to(m_buffer, "{}", object.changeset());
@@ -874,7 +869,7 @@ void ChangesetsTable::add_changeset_row(const osmium::Changeset& changeset) {
             case column_type::bounds_box2d:
                 if (changeset.bounds().valid()) {
                     const auto& b = changeset.bounds();
-                    fmt::format_to(m_buffer, "BOX({} {},{} {})", b.bottom_left().lon(), b.bottom_left().lat(), b.top_right().lon(), b.top_right().lat());
+                    fmt::format_to(m_buffer, "BOX({:.7f} {:.7f},{:.7f} {:.7f})", b.bottom_left().lon(), b.bottom_left().lat(), b.top_right().lon(), b.top_right().lat());
                 } else {
                     add_null(m_buffer);
                 }
@@ -928,7 +923,7 @@ void ChangesetTagsTable::add_changeset_row(const osmium::Changeset& changeset) {
                     break;
                 case column_type::tag_kv:
                     append_pg_escaped(m_buffer, tag.key());
-                    fmt::format_to(m_buffer, "=");
+                    add_char(m_buffer, '=');
                     append_pg_escaped(m_buffer, tag.value());
                     break;
                 default:

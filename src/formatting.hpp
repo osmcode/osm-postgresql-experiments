@@ -14,6 +14,12 @@
 
 #include <string>
 
+void add_null(fmt::memory_buffer& buffer);
+
+void add_char(fmt::memory_buffer& buffer, char c);
+
+void add_bool(fmt::memory_buffer& buffer, bool value, char tv = 't', char fv = 'f');
+
 void add_tags_json(fmt::memory_buffer& buffer, const osmium::TagList& tags);
 
 void add_tags_hstore(fmt::memory_buffer& buffer, const osmium::TagList& tags);
