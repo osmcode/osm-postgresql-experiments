@@ -101,6 +101,35 @@ static const std::vector<column_config_type> column_config{
     {"C.", cft::comment_text,        "body",           "TEXT",                            {}},
 };
 
+struct timestamp_range {
+    osmium::Timestamp start;
+    osmium::Timestamp finish;
+};
+
+template <>
+struct fmt::formatter<timestamp_range> {
+
+    constexpr auto parse(parse_context& ctx) {
+        for (auto it = ctx.begin(); it != ctx.end(); ++it) {
+            if (*it == '}') {
+                return it;
+            }
+        }
+
+        throw format_error("invalid format");
+    }
+
+    template <typename FormatContext>
+    auto format(const timestamp_range& range, FormatContext& ctx) {
+        return format_to(
+            ctx.out(),
+            "[{},{})",
+            range.start.to_iso(),
+            range.finish.valid() && range.finish >= range.start ? range.finish.to_iso() : "");
+    }
+
+};
+
 template <>
 struct fmt::formatter<osmium::item_type> : formatter<char> {
 
@@ -377,12 +406,10 @@ void ObjectsTable::add_row(const osmium::OSMObject& object, const osmium::Timest
                 fmt::format_to(m_buffer, "{}", object.timestamp().to_iso());
                 break;
             case column_type::timestamp_sec:
-                fmt::format_to(m_buffer, "{}", static_cast<uint64_t>(object.timestamp()));
+                fmt::format_to(m_buffer, "{}", object.timestamp().seconds_since_epoch());
                 break;
             case column_type::timestamp_range:
-                fmt::format_to(m_buffer, "[{},{})", object.timestamp().to_iso(),
-                    (next_version_timestamp.valid() && next_version_timestamp >= object.timestamp()) ?
-                        next_version_timestamp.to_iso() : "");
+                fmt::format_to(m_buffer, "{}", timestamp_range{object.timestamp(), next_version_timestamp});
                 break;
             case column_type::uid:
                 fmt::format_to(m_buffer, "{}", object.uid());
@@ -510,12 +537,10 @@ void TagsTable::add_row(const osmium::OSMObject& object, const osmium::Timestamp
                     fmt::format_to(m_buffer, "{}", object.timestamp().to_iso());
                     break;
                 case column_type::timestamp_sec:
-                    fmt::format_to(m_buffer, "{}", static_cast<uint64_t>(object.timestamp()));
+                    fmt::format_to(m_buffer, "{}", object.timestamp().seconds_since_epoch());
                     break;
                 case column_type::timestamp_range:
-                    fmt::format_to(m_buffer, "[{},{})", object.timestamp().to_iso(),
-                        (next_version_timestamp.valid() && next_version_timestamp >= object.timestamp()) ?
-                            next_version_timestamp.to_iso() : "");
+                    fmt::format_to(m_buffer, "{}", timestamp_range{object.timestamp(), next_version_timestamp});
                     break;
                 case column_type::uid:
                     fmt::format_to(m_buffer, "{}", object.uid());
@@ -592,12 +617,10 @@ void WayNodesTable::add_row(const osmium::OSMObject& object, const osmium::Times
                     fmt::format_to(m_buffer, "{}", object.timestamp().to_iso());
                     break;
                 case column_type::timestamp_sec:
-                    fmt::format_to(m_buffer, "{}", static_cast<uint64_t>(object.timestamp()));
+                    fmt::format_to(m_buffer, "{}", object.timestamp().seconds_since_epoch());
                     break;
                 case column_type::timestamp_range:
-                    fmt::format_to(m_buffer, "[{},{})", object.timestamp().to_iso(),
-                        (next_version_timestamp.valid() && next_version_timestamp >= object.timestamp()) ?
-                            next_version_timestamp.to_iso() : "");
+                    fmt::format_to(m_buffer, "{}", timestamp_range{object.timestamp(), next_version_timestamp});
                     break;
                 case column_type::uid:
                     fmt::format_to(m_buffer, "{}", object.uid());
@@ -680,12 +703,10 @@ void MembersTable::add_row(const osmium::OSMObject& object, const osmium::Timest
                     fmt::format_to(m_buffer, "{}", object.timestamp().to_iso());
                     break;
                 case column_type::timestamp_sec:
-                    fmt::format_to(m_buffer, "{}", static_cast<uint64_t>(object.timestamp()));
+                    fmt::format_to(m_buffer, "{}", object.timestamp().seconds_since_epoch());
                     break;
                 case column_type::timestamp_range:
-                    fmt::format_to(m_buffer, "[{},{})", object.timestamp().to_iso(),
-                        (next_version_timestamp.valid() && next_version_timestamp >= object.timestamp()) ?
-                            next_version_timestamp.to_iso() : "");
+                    fmt::format_to(m_buffer, "{}", timestamp_range{object.timestamp(), next_version_timestamp});
                     break;
                 case column_type::uid:
                     fmt::format_to(m_buffer, "{}", object.uid());
@@ -797,7 +818,7 @@ void ChangesetsTable::add_changeset_row(const osmium::Changeset& changeset) {
                 fmt::format_to(m_buffer, "{}", changeset.created_at().to_iso());
                 break;
             case column_type::created_at_sec:
-                fmt::format_to(m_buffer, "{}", static_cast<uint64_t>(changeset.created_at()));
+                fmt::format_to(m_buffer, "{}", changeset.created_at().seconds_since_epoch());
                 break;
             case column_type::closed_at_iso:
                 if (changeset.closed_at().valid()) {
@@ -808,13 +829,13 @@ void ChangesetsTable::add_changeset_row(const osmium::Changeset& changeset) {
                 break;
             case column_type::closed_at_sec:
                 if (changeset.closed_at().valid()) {
-                    fmt::format_to(m_buffer, "{}", static_cast<uint64_t>(changeset.closed_at()));
+                    fmt::format_to(m_buffer, "{}", changeset.closed_at().seconds_since_epoch());
                 } else {
                     add_null(m_buffer);
                 }
                 break;
             case column_type::timestamp_range:
-                fmt::format_to(m_buffer, "[{},{})", changeset.created_at().to_iso(), changeset.closed_at().valid() ? changeset.closed_at().to_iso() : "");
+                fmt::format_to(m_buffer, "{}", timestamp_range{changeset.created_at(), changeset.closed_at()});
                 break;
             case column_type::tags_jsonb:
                 /* fallthrough */
@@ -982,7 +1003,7 @@ void ChangesetCommentsTable::add_changeset_row(const osmium::Changeset& changese
                     fmt::format_to(m_buffer, "{}", comment.date().to_iso());
                     break;
                 case column_type::timestamp_sec:
-                    fmt::format_to(m_buffer, "{}", static_cast<uint64_t>(comment.date()));
+                    fmt::format_to(m_buffer, "{}", comment.date().seconds_since_epoch());
                     break;
                 case column_type::comment_text:
                     append_pg_escaped(m_buffer, comment.text());
