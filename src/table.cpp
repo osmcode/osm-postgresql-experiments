@@ -231,9 +231,11 @@ void Table::sql_data_definition() const {
         sql += "CREATE EXTENSION IF NOT EXISTS postgis;\n\n";
     }
 
-    sql += "DROP TABLE IF EXISTS \"";
-    sql += m_name;
-    sql += "\" CASCADE;\n\n";
+    if (!opts.add_to) {
+        sql += "DROP TABLE IF EXISTS \"";
+        sql += m_name;
+        sql += "\" CASCADE;\n\n";
+    }
 
     if (m_column_flags & sql_column_config_flags::nwr_enum) {
         sql += "DROP TYPE IF EXISTS \"nwr_enum\" CASCADE;\n\n";
@@ -249,7 +251,7 @@ void Table::sql_data_definition() const {
                ");\n\n";
     }
 
-    sql += "CREATE TABLE \"";
+    sql += "CREATE TABLE IF NOT EXISTS \"";
     sql += m_name;
     sql += "\" (\n";
 

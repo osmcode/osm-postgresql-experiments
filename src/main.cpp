@@ -113,6 +113,7 @@ void parse_command_line(int argc, char* argv[], std::string& input_filename, std
         ("help,h", "Show usage help")
         ("verbose,v", "Set verbose mode")
         ("with-history,H", "With history")
+        ("add,a", "Add to existing Table")
     ;
 
     po::options_description hidden;
@@ -152,6 +153,10 @@ void parse_command_line(int argc, char* argv[], std::string& input_filename, std
 
     if (vm.count("with-history")) {
         opts.with_history = true;
+    }
+
+    if (vm.count("add")) {
+        opts.add = true;
     }
 
     if (vm.count("filter")) {
@@ -215,6 +220,7 @@ int main(int argc, char* argv[]) {
     vout << "  Use diff handler: " << yes_no(opts.use_diff_handler);
     vout << "  Use location index: " << yes_no(opts.use_location_handler);
     vout << "  Assemble areas: " << yes_no(opts.assemble_areas);
+    vout << " Add to existing Table: " << yes_no(opts.add);
 
     vout << "Filter:\n";
     vout << "  With tags: " << yes_no(opts.filter_with_tags);

@@ -8,5 +8,6 @@ struct Options {
     bool use_diff_handler = false;
     bool use_location_handler = false;
     bool assemble_areas = false;
+    bool add = false;
 };
 
