@@ -231,7 +231,7 @@ void Table::sql_data_definition() const {
         sql += "CREATE EXTENSION IF NOT EXISTS postgis;\n\n";
     }
 
-    if (!opts.add_to) {
+    if (!opts.add) {
         sql += "DROP TABLE IF EXISTS \"";
         sql += m_name;
         sql += "\" CASCADE;\n\n";
