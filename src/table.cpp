@@ -211,7 +211,7 @@ std::string Table::sql_primary_key() const {
     }
     primary_keys += "id, ";
     if (opts.with_history) {
-        primary_keys += "version, ";
+        primary_keys += "version, deleted, ";
     }
     primary_keys.resize(primary_keys.size() - 2);
 
