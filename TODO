@@ -7,6 +7,9 @@
 * timezones?
 * lat/lon as integers?
 * projected geometry?
+* compression of copy file?
+* support for other databases? mysql/mariadb LOAD DATA INFILE
+* writing out data from database to OSM files?
 * objtype as enum instead of as char?
 
 CREATE TYPE rel_member AS (
