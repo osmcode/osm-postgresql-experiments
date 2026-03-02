@@ -940,7 +940,6 @@ std::string ChangesetCommentsTable::sql_primary_key() const {
 }
 
 void ChangesetCommentsTable::add_changeset_row(const osmium::Changeset& changeset) {
-    std::size_t n = 0;
     for (const auto& comment : changeset.discussion()) {
         for (const auto& column : m_columns) {
             start_column();
@@ -968,7 +967,6 @@ void ChangesetCommentsTable::add_changeset_row(const osmium::Changeset& changese
             }
         }
         end_row();
-        ++n;
     }
 }
 
