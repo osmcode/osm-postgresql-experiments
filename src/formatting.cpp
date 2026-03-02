@@ -79,7 +79,7 @@ void add_way_nodes_array(fmt::memory_buffer& buffer, const osmium::WayNodeList& 
         } else {
             delimiter = true;
         }
-        fmt::format_to(buffer, "{}", nr.ref());
+        fmt::format_to(std::back_inserter(buffer), "{}", nr.ref());
     }
 
     add_char(buffer, '}');
@@ -125,14 +125,14 @@ void add_members_type(fmt::memory_buffer& buffer, const osmium::RelationMemberLi
             delimiter = true;
         }
 
-        fmt::format_to(buffer, "\"({},{},", osmium::item_type_to_char(rm.type()), rm.ref());
+        fmt::format_to(std::back_inserter(buffer), "\"({},{},", osmium::item_type_to_char(rm.type()), rm.ref());
         if (needs_quoting(rm.role())) {
-            fmt::format_to(buffer, R"FOO(\\")FOO");
+            fmt::format_to(std::back_inserter(buffer), R"FOO(\\")FOO");
             const auto escaped_role = escape_str(rm.role());
             append_pg_escaped(buffer, escaped_role.c_str());
-            fmt::format_to(buffer, R"FOO(\\")")FOO");
+            fmt::format_to(std::back_inserter(buffer), R"FOO(\\")")FOO");
         } else {
-            fmt::format_to(buffer, "{})\"", rm.role());
+            fmt::format_to(std::back_inserter(buffer), "{})\"", rm.role());
         }
     }
 

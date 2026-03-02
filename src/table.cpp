@@ -109,7 +109,7 @@ struct timestamp_range {
 template <>
 struct fmt::formatter<timestamp_range> {
 
-    constexpr auto parse(parse_context& ctx) {
+    constexpr auto parse(format_parse_context& ctx) {
         for (auto it = ctx.begin(); it != ctx.end(); ++it) {
             if (*it == '}') {
                 return it;
@@ -145,7 +145,7 @@ std::string print_streams() {
     std::string out;
 
     for (const auto& config : stream_config) {
-        out += "    {}: {}\n"_format(config.stream, config.name);
+        out += fmt::format("    {}: {}\n", config.stream, config.name);
     }
 
     return out;
@@ -238,7 +238,7 @@ void Table::close() {
 }
 
 static std::string primary_key(const std::string& table_name, const std::string& keys) {
-    return "-- ALTER TABLE \"{0}\" ADD PRIMARY KEY({1}); -- %PK:{0}%\n"_format(table_name, keys);
+    return fmt::format("-- ALTER TABLE \"{0}\" ADD PRIMARY KEY({1}); -- %PK:{0}%\n", table_name, keys);
 }
 
 std::string Table::sql_primary_key() const {
@@ -269,7 +269,7 @@ void Table::sql_data_definition() const {
         sql += "CREATE EXTENSION IF NOT EXISTS postgis;\n\n";
     }
 
-    sql += "DROP TABLE IF EXISTS \"{}\" CASCADE;\n\n"_format(m_name);
+    sql += fmt::format("DROP TABLE IF EXISTS \"{}\" CASCADE;\n\n", m_name);
 
     if (m_column_flags & sql_column_config_flags::nwr_enum) {
         sql += "DROP TYPE IF EXISTS \"nwr_enum\" CASCADE;\n\n";
@@ -285,10 +285,10 @@ void Table::sql_data_definition() const {
                ");\n\n";
     }
 
-    sql += "CREATE TABLE \"{}\" (\n"_format(m_name);
+    sql += fmt::format("CREATE TABLE \"{}\" (\n", m_name);
 
     for (const auto& column : m_columns) {
-        sql += "    \"{0}\" {1}, -- %COL:{2}:{0}%\n"_format(column.sql_name, column.sql_type, m_name);
+        sql += fmt::format("    \"{0}\" {1}, -- %COL:{2}:{0}%\n", column.sql_name, column.sql_type, m_name);
     }
 
     const auto pos = sql.find_last_of(',');
@@ -297,16 +297,16 @@ void Table::sql_data_definition() const {
     }
     sql += ");\n\n";
 
-    sql += "\\copy \"{}\" from '{}'\n\n"_format(m_name, m_filename);
+    sql += fmt::format("\\copy \"{}\" from '{}'\n\n", m_name, m_filename);
 
-    sql += "ANALYZE \"{}\";\n\n"_format(m_name);
+    sql += fmt::format("ANALYZE \"{}\";\n\n", m_name);
 
     if (opts.with_primary_key) {
         sql += sql_primary_key();
     }
 
     if (m_column_flags & sql_column_config_flags::geom_index) {
-        sql += "-- CREATE INDEX \"{0}_geom_idx\" ON \"{0}\" USING GIST (geom); -- %GIDX:{0}:geom%\n"_format(m_name);
+        sql += fmt::format("-- CREATE INDEX \"{0}_geom_idx\" ON \"{0}\" USING GIST (geom); -- %GIDX:{0}:geom%\n", m_name);
     }
 
     sql += '\n';
@@ -330,7 +330,7 @@ void append_coordinate(const osmium::OSMObject& object, fmt::memory_buffer& buff
     }
 
     const auto location = static_cast<const osmium::Node&>(object).location();
-    fmt::format_to(buffer, "{}", std::forward<TFunc>(func)(location));
+    fmt::format_to(std::back_inserter(buffer), "{}", std::forward<TFunc>(func)(location));
 }
 
 static inline unsigned int lon2x(double lon) noexcept {
@@ -361,14 +361,14 @@ void ObjectsTable::add_row(const osmium::OSMObject& object, const osmium::Timest
         start_column();
         switch (column.format) {
             case column_type::objtype:
-                fmt::format_to(m_buffer, "{}", object.type());
+                fmt::format_to(std::back_inserter(m_buffer), "{}", object.type());
                 break;
             case column_type::id:
-                fmt::format_to(m_buffer, "{}", object.id());
+                fmt::format_to(std::back_inserter(m_buffer), "{}", object.id());
                 break;
             case column_type::orig_id:
                 if (object.type() == osmium::item_type::area) {
-                    fmt::format_to(m_buffer, "{}", static_cast<const osmium::Area&>(object).orig_id());
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", static_cast<const osmium::Area&>(object).orig_id());
                 } else {
                     add_null(m_buffer);
                 }
@@ -381,7 +381,7 @@ void ObjectsTable::add_row(const osmium::OSMObject& object, const osmium::Timest
                 }
                 break;
             case column_type::version:
-                fmt::format_to(m_buffer, "{}", object.version());
+                fmt::format_to(std::back_inserter(m_buffer), "{}", object.version());
                 break;
             case column_type::deleted:
                 add_bool(m_buffer, object.deleted());
@@ -390,19 +390,19 @@ void ObjectsTable::add_row(const osmium::OSMObject& object, const osmium::Timest
                 add_bool(m_buffer, object.visible());
                 break;
             case column_type::changeset:
-                fmt::format_to(m_buffer, "{}", object.changeset());
+                fmt::format_to(std::back_inserter(m_buffer), "{}", object.changeset());
                 break;
             case column_type::timestamp_iso:
-                fmt::format_to(m_buffer, "{}", object.timestamp().to_iso());
+                fmt::format_to(std::back_inserter(m_buffer), "{}", object.timestamp().to_iso());
                 break;
             case column_type::timestamp_sec:
-                fmt::format_to(m_buffer, "{}", object.timestamp().seconds_since_epoch());
+                fmt::format_to(std::back_inserter(m_buffer), "{}", object.timestamp().seconds_since_epoch());
                 break;
             case column_type::timestamp_range:
-                fmt::format_to(m_buffer, "{}", timestamp_range{object.timestamp(), next_version_timestamp});
+                fmt::format_to(std::back_inserter(m_buffer), "{}", timestamp_range{object.timestamp(), next_version_timestamp});
                 break;
             case column_type::uid:
-                fmt::format_to(m_buffer, "{}", object.uid());
+                fmt::format_to(std::back_inserter(m_buffer), "{}", object.uid());
                 break;
             case column_type::user:
                 append_pg_escaped(m_buffer, object.user());
@@ -457,7 +457,7 @@ void ObjectsTable::add_row(const osmium::OSMObject& object, const osmium::Timest
                 /* fallthrough */
             case column_type::geometry_point:
                 if (object.type() == osmium::item_type::node && static_cast<const osmium::Node&>(object).location()) {
-                    fmt::format_to(m_buffer, "{}", m_factory.create_point(static_cast<const osmium::Node&>(object)));
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", m_factory.create_point(static_cast<const osmium::Node&>(object)));
                 } else {
                     add_null(m_buffer);
                 }
@@ -465,7 +465,7 @@ void ObjectsTable::add_row(const osmium::OSMObject& object, const osmium::Timest
             case column_type::geometry_linestring:
                 if (object.type() == osmium::item_type::way) {
                     try {
-                        fmt::format_to(m_buffer, "{}", m_factory.create_linestring(static_cast<const osmium::Way&>(object)));
+                        fmt::format_to(std::back_inserter(m_buffer), "{}", m_factory.create_linestring(static_cast<const osmium::Way&>(object)));
                     } catch (const osmium::geometry_error&) {
                         add_null(m_buffer);
                     }
@@ -476,7 +476,7 @@ void ObjectsTable::add_row(const osmium::OSMObject& object, const osmium::Timest
             case column_type::geometry_polygon:
                 if (object.type() == osmium::item_type::area) {
                     try {
-                        fmt::format_to(m_buffer, m_factory.create_multipolygon(static_cast<const osmium::Area&>(object)));
+                        fmt::format_to(std::back_inserter(m_buffer), m_factory.create_multipolygon(static_cast<const osmium::Area&>(object)));
                     } catch (const osmium::geometry_error&) {
                         add_null(m_buffer);
                     }
@@ -501,13 +501,13 @@ void TagsTable::add_row(const osmium::OSMObject& object, const osmium::Timestamp
             start_column();
             switch (column.format) {
                 case column_type::objtype:
-                    fmt::format_to(m_buffer, "{}", object.type());
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", object.type());
                     break;
                 case column_type::id:
-                    fmt::format_to(m_buffer, "{}", object.id());
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", object.id());
                     break;
                 case column_type::version:
-                    fmt::format_to(m_buffer, "{}", object.version());
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", object.version());
                     break;
                 case column_type::deleted:
                     add_bool(m_buffer, object.deleted());
@@ -516,25 +516,25 @@ void TagsTable::add_row(const osmium::OSMObject& object, const osmium::Timestamp
                     add_bool(m_buffer, object.visible());
                     break;
                 case column_type::changeset:
-                    fmt::format_to(m_buffer, "{}", object.changeset());
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", object.changeset());
                     break;
                 case column_type::timestamp_iso:
-                    fmt::format_to(m_buffer, "{}", object.timestamp().to_iso());
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", object.timestamp().to_iso());
                     break;
                 case column_type::timestamp_sec:
-                    fmt::format_to(m_buffer, "{}", object.timestamp().seconds_since_epoch());
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", object.timestamp().seconds_since_epoch());
                     break;
                 case column_type::timestamp_range:
-                    fmt::format_to(m_buffer, "{}", timestamp_range{object.timestamp(), next_version_timestamp});
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", timestamp_range{object.timestamp(), next_version_timestamp});
                     break;
                 case column_type::uid:
-                    fmt::format_to(m_buffer, "{}", object.uid());
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", object.uid());
                     break;
                 case column_type::user:
                     append_pg_escaped(m_buffer, object.user());
                     break;
                 case column_type::tag_seq:
-                    fmt::format_to(m_buffer, "{}", n);
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", n);
                     break;
                 case column_type::tag_key:
                     append_pg_escaped(m_buffer, tag.key());
@@ -576,13 +576,13 @@ void WayNodesTable::add_row(const osmium::OSMObject& object, const osmium::Times
             start_column();
             switch (column.format) {
                 case column_type::objtype:
-                    fmt::format_to(m_buffer, "{}", object.type());
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", object.type());
                     break;
                 case column_type::id:
-                    fmt::format_to(m_buffer, "{}", object.id());
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", object.id());
                     break;
                 case column_type::version:
-                    fmt::format_to(m_buffer, "{}", object.version());
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", object.version());
                     break;
                 case column_type::deleted:
                     add_bool(m_buffer, object.deleted());
@@ -591,19 +591,19 @@ void WayNodesTable::add_row(const osmium::OSMObject& object, const osmium::Times
                     add_bool(m_buffer, object.visible());
                     break;
                 case column_type::changeset:
-                    fmt::format_to(m_buffer, "{}", object.changeset());
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", object.changeset());
                     break;
                 case column_type::timestamp_iso:
-                    fmt::format_to(m_buffer, "{}", object.timestamp().to_iso());
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", object.timestamp().to_iso());
                     break;
                 case column_type::timestamp_sec:
-                    fmt::format_to(m_buffer, "{}", object.timestamp().seconds_since_epoch());
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", object.timestamp().seconds_since_epoch());
                     break;
                 case column_type::timestamp_range:
-                    fmt::format_to(m_buffer, "{}", timestamp_range{object.timestamp(), next_version_timestamp});
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", timestamp_range{object.timestamp(), next_version_timestamp});
                     break;
                 case column_type::uid:
-                    fmt::format_to(m_buffer, "{}", object.uid());
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", object.uid());
                     break;
                 case column_type::user:
                     append_pg_escaped(m_buffer, object.user());
@@ -621,10 +621,10 @@ void WayNodesTable::add_row(const osmium::OSMObject& object, const osmium::Times
                     append_coordinate(object, m_buffer, [](osmium::Location location) -> std::string { return std::to_string(location.y()); });
                     break;
                 case column_type::node_seq:
-                    fmt::format_to(m_buffer, "{}", n);
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", n);
                     break;
                 case column_type::node_ref:
-                    fmt::format_to(m_buffer, "{}", nr.ref());
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", nr.ref());
                     break;
                 default:
                     break;
@@ -657,13 +657,13 @@ void MembersTable::add_row(const osmium::OSMObject& object, const osmium::Timest
             start_column();
             switch (column.format) {
                 case column_type::objtype:
-                    fmt::format_to(m_buffer, "{}", object.type());
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", object.type());
                     break;
                 case column_type::id:
-                    fmt::format_to(m_buffer, "{}", object.id());
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", object.id());
                     break;
                 case column_type::version:
-                    fmt::format_to(m_buffer, "{}", object.version());
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", object.version());
                     break;
                 case column_type::deleted:
                     add_bool(m_buffer, object.deleted());
@@ -672,19 +672,19 @@ void MembersTable::add_row(const osmium::OSMObject& object, const osmium::Timest
                     add_bool(m_buffer, object.visible());
                     break;
                 case column_type::changeset:
-                    fmt::format_to(m_buffer, "{}", object.changeset());
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", object.changeset());
                     break;
                 case column_type::timestamp_iso:
-                    fmt::format_to(m_buffer, "{}", object.timestamp().to_iso());
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", object.timestamp().to_iso());
                     break;
                 case column_type::timestamp_sec:
-                    fmt::format_to(m_buffer, "{}", object.timestamp().seconds_since_epoch());
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", object.timestamp().seconds_since_epoch());
                     break;
                 case column_type::timestamp_range:
-                    fmt::format_to(m_buffer, "{}", timestamp_range{object.timestamp(), next_version_timestamp});
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", timestamp_range{object.timestamp(), next_version_timestamp});
                     break;
                 case column_type::uid:
-                    fmt::format_to(m_buffer, "{}", object.uid());
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", object.uid());
                     break;
                 case column_type::user:
                     append_pg_escaped(m_buffer, object.user());
@@ -702,16 +702,16 @@ void MembersTable::add_row(const osmium::OSMObject& object, const osmium::Timest
                     append_coordinate(object, m_buffer, [](osmium::Location location) -> std::string { return std::to_string(location.y()); });
                     break;
                 case column_type::member_seq:
-                    fmt::format_to(m_buffer, "{}", n);
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", n);
                     break;
                 case column_type::member_type_char:
-                    fmt::format_to(m_buffer, "{}", member.type());
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", member.type());
                     break;
                 case column_type::member_type_enum:
-                    fmt::format_to(m_buffer, "{}", item_type_to_enum(member.type()));
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", item_type_to_enum(member.type()));
                     break;
                 case column_type::member_ref:
-                    fmt::format_to(m_buffer, "{}", member.ref());
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", member.ref());
                     break;
                 case column_type::member_role:
                     append_pg_escaped(m_buffer, member.role());
@@ -740,7 +740,7 @@ void UsersTable::add_row(const osmium::OSMObject& object, const osmium::Timestam
         start_column();
         switch (column.format) {
             case column_type::uid:
-                fmt::format_to(m_buffer, "{}", object.uid());
+                fmt::format_to(std::back_inserter(m_buffer), "{}", object.uid());
                 break;
             case column_type::user:
                 append_pg_escaped(m_buffer, object.user());
@@ -762,45 +762,45 @@ void ChangesetsTable::add_changeset_row(const osmium::Changeset& changeset) {
         start_column();
         switch (column.format) {
             case column_type::changeset:
-                fmt::format_to(m_buffer, "{}", changeset.id());
+                fmt::format_to(std::back_inserter(m_buffer), "{}", changeset.id());
                 break;
             case column_type::uid:
-                fmt::format_to(m_buffer, "{}", changeset.uid());
+                fmt::format_to(std::back_inserter(m_buffer), "{}", changeset.uid());
                 break;
             case column_type::user:
                 append_pg_escaped(m_buffer, changeset.user());
                 break;
             case column_type::num_changes:
-                fmt::format_to(m_buffer, "{}", changeset.num_changes());
+                fmt::format_to(std::back_inserter(m_buffer), "{}", changeset.num_changes());
                 break;
             case column_type::comments_count:
-                fmt::format_to(m_buffer, "{}", changeset.num_comments());
+                fmt::format_to(std::back_inserter(m_buffer), "{}", changeset.num_comments());
                 break;
             case column_type::open:
-                fmt::format_to(m_buffer, "{}", changeset.open() ? 't' : 'f');
+                fmt::format_to(std::back_inserter(m_buffer), "{}", changeset.open() ? 't' : 'f');
                 break;
             case column_type::created_at_iso:
-                fmt::format_to(m_buffer, "{}", changeset.created_at().to_iso());
+                fmt::format_to(std::back_inserter(m_buffer), "{}", changeset.created_at().to_iso());
                 break;
             case column_type::created_at_sec:
-                fmt::format_to(m_buffer, "{}", changeset.created_at().seconds_since_epoch());
+                fmt::format_to(std::back_inserter(m_buffer), "{}", changeset.created_at().seconds_since_epoch());
                 break;
             case column_type::closed_at_iso:
                 if (changeset.closed_at().valid()) {
-                    fmt::format_to(m_buffer, "{}", changeset.closed_at().to_iso());
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", changeset.closed_at().to_iso());
                 } else {
                     add_null(m_buffer);
                 }
                 break;
             case column_type::closed_at_sec:
                 if (changeset.closed_at().valid()) {
-                    fmt::format_to(m_buffer, "{}", changeset.closed_at().seconds_since_epoch());
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", changeset.closed_at().seconds_since_epoch());
                 } else {
                     add_null(m_buffer);
                 }
                 break;
             case column_type::timestamp_range:
-                fmt::format_to(m_buffer, "{}", timestamp_range{changeset.created_at(), changeset.closed_at()});
+                fmt::format_to(std::back_inserter(m_buffer), "{}", timestamp_range{changeset.created_at(), changeset.closed_at()});
                 break;
             case column_type::tags_jsonb:
                 /* fallthrough */
@@ -812,56 +812,56 @@ void ChangesetsTable::add_changeset_row(const osmium::Changeset& changeset) {
                 break;
             case column_type::lon_real:
                 if (changeset.bounds().valid()) {
-                    fmt::format_to(m_buffer, "{:.7f}", changeset.bounds().bottom_left().lon());
+                    fmt::format_to(std::back_inserter(m_buffer), "{:.7f}", changeset.bounds().bottom_left().lon());
                 } else {
                     add_null(m_buffer);
                 }
                 break;
             case column_type::lon_int:
                 if (changeset.bounds().valid()) {
-                    fmt::format_to(m_buffer, "{}", changeset.bounds().bottom_left().x());
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", changeset.bounds().bottom_left().x());
                 } else {
                     add_null(m_buffer);
                 }
                 break;
             case column_type::lat_real:
                 if (changeset.bounds().valid()) {
-                    fmt::format_to(m_buffer, "{:.7f}", changeset.bounds().bottom_left().lat());
+                    fmt::format_to(std::back_inserter(m_buffer), "{:.7f}", changeset.bounds().bottom_left().lat());
                 } else {
                     add_null(m_buffer);
                 }
                 break;
             case column_type::lat_int:
                 if (changeset.bounds().valid()) {
-                    fmt::format_to(m_buffer, "{}", changeset.bounds().bottom_left().y());
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", changeset.bounds().bottom_left().y());
                 } else {
                     add_null(m_buffer);
                 }
                 break;
             case column_type::max_lon_real:
                 if (changeset.bounds().valid()) {
-                    fmt::format_to(m_buffer, "{:.7f}", changeset.bounds().top_right().lon());
+                    fmt::format_to(std::back_inserter(m_buffer), "{:.7f}", changeset.bounds().top_right().lon());
                 } else {
                     add_null(m_buffer);
                 }
                 break;
             case column_type::max_lon_int:
                 if (changeset.bounds().valid()) {
-                    fmt::format_to(m_buffer, "{}", changeset.bounds().top_right().x());
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", changeset.bounds().top_right().x());
                 } else {
                     add_null(m_buffer);
                 }
                 break;
             case column_type::max_lat_real:
                 if (changeset.bounds().valid()) {
-                    fmt::format_to(m_buffer, "{:.7f}", changeset.bounds().top_right().lat());
+                    fmt::format_to(std::back_inserter(m_buffer), "{:.7f}", changeset.bounds().top_right().lat());
                 } else {
                     add_null(m_buffer);
                 }
                 break;
             case column_type::max_lat_int:
                 if (changeset.bounds().valid()) {
-                    fmt::format_to(m_buffer, "{}", changeset.bounds().top_right().y());
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", changeset.bounds().top_right().y());
                 } else {
                     add_null(m_buffer);
                 }
@@ -869,7 +869,7 @@ void ChangesetsTable::add_changeset_row(const osmium::Changeset& changeset) {
             case column_type::bounds_box2d:
                 if (changeset.bounds().valid()) {
                     const auto& b = changeset.bounds();
-                    fmt::format_to(m_buffer, "BOX({:.7f} {:.7f},{:.7f} {:.7f})", b.bottom_left().lon(), b.bottom_left().lat(), b.top_right().lon(), b.top_right().lat());
+                    fmt::format_to(std::back_inserter(m_buffer), "BOX({:.7f} {:.7f},{:.7f} {:.7f})", b.bottom_left().lon(), b.bottom_left().lat(), b.top_right().lon(), b.top_right().lat());
                 } else {
                     add_null(m_buffer);
                 }
@@ -886,7 +886,7 @@ void ChangesetsTable::add_changeset_row(const osmium::Changeset& changeset) {
                     };
                     m_factory.polygon_start();
                     m_factory.fill_polygon(locations.cbegin(), locations.cend());
-                    fmt::format_to(m_buffer, m_factory.polygon_finish(5));
+                    fmt::format_to(std::back_inserter(m_buffer), m_factory.polygon_finish(5));
                 } else {
                     add_null(m_buffer);
                 }
@@ -910,10 +910,10 @@ void ChangesetTagsTable::add_changeset_row(const osmium::Changeset& changeset) {
             start_column();
             switch (column.format) {
                 case column_type::id:
-                    fmt::format_to(m_buffer, "{}", changeset.id());
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", changeset.id());
                     break;
                 case column_type::tag_seq:
-                    fmt::format_to(m_buffer, "{}", n);
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", n);
                     break;
                 case column_type::tag_key:
                     append_pg_escaped(m_buffer, tag.key());
@@ -946,19 +946,19 @@ void ChangesetCommentsTable::add_changeset_row(const osmium::Changeset& changese
             start_column();
             switch (column.format) {
                 case column_type::id:
-                    fmt::format_to(m_buffer, "{}", changeset.id());
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", changeset.id());
                     break;
                 case column_type::uid:
-                    fmt::format_to(m_buffer, "{}", changeset.uid());
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", changeset.uid());
                     break;
                 case column_type::user:
                     append_pg_escaped(m_buffer, comment.user());
                     break;
                 case column_type::timestamp_iso:
-                    fmt::format_to(m_buffer, "{}", comment.date().to_iso());
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", comment.date().to_iso());
                     break;
                 case column_type::timestamp_sec:
-                    fmt::format_to(m_buffer, "{}", comment.date().seconds_since_epoch());
+                    fmt::format_to(std::back_inserter(m_buffer), "{}", comment.date().seconds_since_epoch());
                     break;
                 case column_type::comment_text:
                     append_pg_escaped(m_buffer, comment.text());
