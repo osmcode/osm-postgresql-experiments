@@ -3,6 +3,8 @@
 
 #include "util.hpp"
 
+#include <cstring>
+
 TEST_CASE("split with delimiter") {
     auto const p = split("foo=bar", '=', "default");
     REQUIRE(p.first == "foo");
@@ -22,7 +24,7 @@ TEST_CASE("list_entities") {
 }
 
 TEST_CASE("yesno") {
-    REQUIRE(yes_no(true) == "yes\n");
-    REQUIRE(yes_no(false) == "no\n");
+    REQUIRE_FALSE(std::strcmp(yes_no(true), "yes\n"));
+    REQUIRE_FALSE(std::strcmp(yes_no(false), "no\n"));
 }
 
