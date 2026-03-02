@@ -2,14 +2,15 @@
 #
 #  CMake Config
 #
-#  OSM-PostrgreSQL-Experiments
+#  OSM-PostgreSQL-Experiments
 #
 #-----------------------------------------------------------------------------
 
-cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+cmake_minimum_required(VERSION 3.10)
 
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+project(osm-postgresql-experiments VERSION 0.0.1 LANGUAGES CXX C)
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 
 #-----------------------------------------------------------------------------
@@ -18,16 +19,11 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 #
 #-----------------------------------------------------------------------------
 
-project(osm-postgresql-experiments)
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(OPE_VERSION_MAJOR 0)
-set(OPE_VERSION_MINOR 0)
-set(OPE_VERSION_PATCH 1)
-
-set(OPE_VERSION
-    ${OPE_VERSION_MAJOR}.${OPE_VERSION_MINOR}.${OPE_VERSION_PATCH})
-
-set(AUTHOR "Jochen Topf <jochen@topf.org>")
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 
 #-----------------------------------------------------------------------------
@@ -41,23 +37,6 @@ include_directories(SYSTEM ${Boost_INCLUDE_DIRS})
 
 find_package(Osmium 2.14.2 REQUIRED COMPONENTS io)
 include_directories(${OSMIUM_INCLUDE_DIRS})
-
-
-#-----------------------------------------------------------------------------
-#
-#  Decide which C++ version to use (Minimum/default: C++11).
-#
-#-----------------------------------------------------------------------------
-if(NOT MSVC)
-    if(NOT USE_CPP_VERSION)
-        set(USE_CPP_VERSION c++14)
-    endif()
-    message(STATUS "Use C++ version: ${USE_CPP_VERSION}")
-    # following only available from cmake 2.8.12:
-    #   add_compile_options(-std=${USE_CPP_VERSION})
-    # so using this instead:
-    add_definitions(-std=${USE_CPP_VERSION})
-endif()
 
 
 #-----------------------------------------------------------------------------
@@ -121,7 +100,7 @@ set(CMAKE_BUILD_TYPE ${build_type}
 #
 #-----------------------------------------------------------------------------
 message(STATUS "Looking for clang-tidy")
-find_program(CLANG_TIDY NAMES clang-tidy clang-tidy-12 clang-tidy-11 clang-tidy-10 clang-tidy-9)
+find_program(CLANG_TIDY NAMES clang-tidy clang-tidy-22 clang-tidy-21 clang-tidy-20 clang-tidy-19)
 
 if(CLANG_TIDY)
     message(STATUS "Looking for clang-tidy - found ${CLANG_TIDY}")
