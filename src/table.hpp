@@ -1,6 +1,5 @@
 #pragma once
 
-#include "format.hpp"
 #include "formatting.hpp"
 #include "options.hpp"
 #include "util.hpp"
@@ -11,9 +10,11 @@
 
 #include <cassert>
 #include <fcntl.h>
+#include <format>
 #include <fstream>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -135,8 +136,8 @@ class Table {
 
 protected:
 
-    std::vector<column_config_type> m_columns{};
-    fmt::memory_buffer m_buffer{};
+    std::vector<column_config_type> m_columns;
+    std::string m_buffer;
 
 public:
 
@@ -195,7 +196,7 @@ public:
     }
 
     void start_column() {
-        static const fmt::string_view tab{"\t"};
+        static const std::string_view tab{"\t"};
         if (m_delimiter) {
             m_buffer.append(tab.begin(), tab.end());
         } else {
@@ -204,7 +205,7 @@ public:
     }
 
     void end_row() {
-        static const fmt::string_view newline{"\n"};
+        static const std::string_view newline{"\n"};
         m_buffer.append(newline.begin(), newline.end());
         m_delimiter = false;
     }

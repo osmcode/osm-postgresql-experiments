@@ -9,11 +9,11 @@ std::pair<std::string, std::string> split(const std::string& input, char delimit
     return std::make_pair(input.substr(0, pos), input.substr(pos + 1));
 }
 
-static void escape_char(fmt::memory_buffer& buffer, const char c) noexcept {
-    const fmt::string_view backslash{"\\\\"};
-    const fmt::string_view newline{"\\n"};
-    const fmt::string_view cr{"\\r"};
-    const fmt::string_view tab{"\\t"};
+static void escape_char(std::string& buffer, const char c) noexcept {
+    const std::string_view backslash{"\\\\"};
+    const std::string_view newline{"\\n"};
+    const std::string_view cr{"\\r"};
+    const std::string_view tab{"\\t"};
 
     switch (c) {
         case '\\':
@@ -33,14 +33,14 @@ static void escape_char(fmt::memory_buffer& buffer, const char c) noexcept {
     }
 }
 
-void append_pg_escaped(fmt::memory_buffer& buffer, const char* str, std::size_t size) {
+void append_pg_escaped(std::string& buffer, const char* str, std::size_t size) {
     while (size-- > 0 && *str != '\0') {
         escape_char(buffer, *str);
         ++str;
     }
 }
 
-void append_pg_escaped(fmt::memory_buffer& buffer, const char* str) {
+void append_pg_escaped(std::string& buffer, const char* str) {
     while (*str != '\0') {
         escape_char(buffer, *str);
         ++str;

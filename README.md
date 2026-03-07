@@ -15,7 +15,7 @@ even more flexibility.
 
 ## Prerequisites
 
-You need a C++ compiler with support for C++14.
+You need a C++ compiler with support for C++20.
 
 You need the following libraries:
 
@@ -25,7 +25,6 @@ You need the following libraries:
 * [bzip2](http://www.bzip.org/)
 * [zlib](https://www.zlib.net/)
 * [Boost libraries](https://www.boost.org/)
-* [fmt](https://github.com/fmtlib/fmt)
 
 
 ## Build

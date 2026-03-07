@@ -1,7 +1,5 @@
 #pragma once
 
-#include "format.hpp"
-
 #include <osmium/osm/relation.hpp>
 #include <osmium/osm/tag.hpp>
 #include <osmium/osm/way.hpp>
@@ -14,18 +12,18 @@
 
 #include <string>
 
-void add_null(fmt::memory_buffer& buffer);
+void add_null(std::string& buffer);
 
-void add_char(fmt::memory_buffer& buffer, char c);
+void add_char(std::string& buffer, char c);
 
-void add_bool(fmt::memory_buffer& buffer, bool value, char tv = 't', char fv = 'f');
+void add_bool(std::string& buffer, bool value, char tv = 't', char fv = 'f');
 
-void add_tags_json(fmt::memory_buffer& buffer, const osmium::TagList& tags);
+void add_tags_json(std::string& buffer, const osmium::TagList& tags);
 
-void add_tags_hstore(fmt::memory_buffer& buffer, const osmium::TagList& tags);
+void add_tags_hstore(std::string& buffer, const osmium::TagList& tags);
 
-void add_way_nodes_array(fmt::memory_buffer& buffer, const osmium::WayNodeList& nodes);
+void add_way_nodes_array(std::string& buffer, const osmium::WayNodeList& nodes);
 
-void add_members_type(fmt::memory_buffer& buffer, const osmium::RelationMemberList& members);
-void add_members_json(fmt::memory_buffer& buffer, const osmium::RelationMemberList& members);
+void add_members_type(std::string& buffer, const osmium::RelationMemberList& members);
+void add_members_json(std::string& buffer, const osmium::RelationMemberList& members);
 
