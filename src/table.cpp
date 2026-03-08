@@ -149,7 +149,9 @@ std::string print_streams() {
     return out;
 }
 
-static const stream_config_type& get_stream_config(const std::string& stream_string) {
+namespace {
+
+const stream_config_type& get_stream_config(const std::string& stream_string) {
     for (const auto& c : stream_config) {
         if (c.stream == stream_string) {
             return c;
@@ -159,7 +161,7 @@ static const stream_config_type& get_stream_config(const std::string& stream_str
     throw std::runtime_error{"Unknown stream type '" + stream_string + "'"};
 }
 
-static const column_config_type& get_column_config(const std::string& format_string) {
+const column_config_type& get_column_config(const std::string& format_string) {
     for (const auto& c : column_config) {
         if (format_string == c.format_string) {
             return c;
@@ -168,6 +170,8 @@ static const column_config_type& get_column_config(const std::string& format_str
 
     throw std::runtime_error{"Unknown column config: " + format_string};
 }
+
+} // anonymous namespace
 
 void Table::setup_columns() {
     if (m_columns_string.size() % 2 != 0) {
@@ -235,9 +239,13 @@ void Table::close() {
     }
 }
 
-static std::string primary_key(const std::string& table_name, const std::string& keys) {
+namespace {
+
+std::string primary_key(const std::string& table_name, const std::string& keys) {
     return std::format("-- ALTER TABLE \"{0}\" ADD PRIMARY KEY({1}); -- %PK:{0}%\n", table_name, keys);
 }
+
+} // anonymous namespace
 
 std::string Table::sql_primary_key() const {
     // TODO: should be different for different streams, disable if the fields are not all there
@@ -320,6 +328,8 @@ void Table::sql_data_definition() const {
     }
 }
 
+namespace {
+
 template <typename TFunc>
 void append_coordinate(const osmium::OSMObject& object, std::string& buffer, TFunc&& func) {
     if (object.type() != osmium::item_type::node || !static_cast<const osmium::Node&>(object).location()) {
@@ -331,15 +341,15 @@ void append_coordinate(const osmium::OSMObject& object, std::string& buffer, TFu
     std::format_to(std::back_inserter(buffer), "{}", std::forward<TFunc>(func)(location));
 }
 
-static inline unsigned int lon2x(double lon) noexcept {
+inline unsigned int lon2x(double lon) noexcept {
    return static_cast<unsigned int>(std::round((lon + 180.0) * 65535.0 / 360.0));
 }
 
-static inline unsigned int lat2y(double lat) noexcept {
+inline unsigned int lat2y(double lat) noexcept {
    return static_cast<unsigned int>(std::round((lat + 90.0) * 65535.0 / 180.0));
 }
 
-static inline unsigned int xy2tile(unsigned int x, unsigned int y) noexcept {
+inline unsigned int xy2tile(unsigned int x, unsigned int y) noexcept {
    unsigned int tile = 0;
 
    for (int i = 15; i >= 0; --i) {
@@ -350,9 +360,11 @@ static inline unsigned int xy2tile(unsigned int x, unsigned int y) noexcept {
    return tile;
 }
 
-static inline unsigned int quadtile(const osmium::Location location) noexcept {
+inline unsigned int quadtile(const osmium::Location location) noexcept {
     return xy2tile(lon2x(location.lon()), lat2y(location.lat()));
 }
+
+} // anonymous namespace
 
 void ObjectsTable::add_row(const osmium::OSMObject& object, const osmium::Timestamp next_version_timestamp) {
     for (const auto& column : m_columns) {
@@ -633,7 +645,9 @@ void WayNodesTable::add_row(const osmium::OSMObject& object, const osmium::Times
     }
 }
 
-static const char* item_type_to_enum(const osmium::item_type type) noexcept {
+namespace {
+
+const char* item_type_to_enum(const osmium::item_type type) noexcept {
     switch (type) {
         case osmium::item_type::node:
             return "Node";
@@ -646,6 +660,8 @@ static const char* item_type_to_enum(const osmium::item_type type) noexcept {
     }
     return "";
 }
+
+} // anonymous namespace
 
 void MembersTable::add_row(const osmium::OSMObject& object, const osmium::Timestamp next_version_timestamp) {
     assert(object.type() == osmium::item_type::relation);
@@ -968,7 +984,9 @@ void ChangesetCommentsTable::add_changeset_row(const osmium::Changeset& changese
     }
 }
 
-static std::unique_ptr<Table> new_table(const std::string& filename, const stream_config_type& stream_config, const std::string& columns_string) {
+namespace {
+
+std::unique_ptr<Table> new_table(const std::string& filename, const stream_config_type& stream_config, const std::string& columns_string) {
     switch (stream_config.stype) {
         case stream_type::objects:
             return std::make_unique<ObjectsTable>(filename, stream_config, columns_string);
@@ -992,6 +1010,8 @@ static std::unique_ptr<Table> new_table(const std::string& filename, const strea
 
     std::abort();
 }
+
+} // anonymous namespace
 
 std::unique_ptr<Table> create_table(const Options& opts, const std::string& config_string) {
     const auto srp = split(config_string, '=', "o");

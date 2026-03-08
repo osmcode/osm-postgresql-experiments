@@ -105,6 +105,8 @@ public:
 
 }; // class DiffHandler
 
+namespace {
+
 void parse_command_line(int argc, char* argv[], std::string& input_filename, std::vector<std::unique_ptr<Table>>& tables) {
     po::options_description desc{"OPTIONS"};
 
@@ -193,6 +195,8 @@ void parse_command_line(int argc, char* argv[], std::string& input_filename, std
         throw std::runtime_error{"No output tables found"};
     }
 }
+
+} // anonymous namespace
 
 int main(int argc, char* argv[]) {
     std::vector<std::unique_ptr<Table>> tables;

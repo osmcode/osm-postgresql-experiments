@@ -35,7 +35,9 @@ void add_tags_json(std::string& buffer, const osmium::TagList& tags) {
     append_pg_escaped(buffer, stream.GetString(), stream.GetSize());
 }
 
-static std::string escape_hstore(const char* str) {
+namespace {
+
+std::string escape_hstore(const char* str) {
     std::string result{"\""};
 
     while (*str) {
@@ -52,6 +54,8 @@ static std::string escape_hstore(const char* str) {
     result += "\"";
     return result;
 }
+
+} // anonymous namespace
 
 void add_tags_hstore(std::string& buffer, const osmium::TagList& tags) {
     if (tags.empty()) {
@@ -87,7 +91,9 @@ void add_way_nodes_array(std::string& buffer, const osmium::WayNodeList& nodes) 
     add_char(buffer, '}');
 }
 
-static bool needs_quoting(const char* str) noexcept {
+namespace {
+
+bool needs_quoting(const char* str) noexcept {
     while (*str) {
         if (!std::isalnum(*str) && *str != '_' && *str != ':') {
             return true;
@@ -97,7 +103,7 @@ static bool needs_quoting(const char* str) noexcept {
     return false;
 }
 
-static std::string escape_str(const char* str) {
+std::string escape_str(const char* str) {
     std::string result;
 
     while (*str) {
@@ -115,6 +121,8 @@ static std::string escape_str(const char* str) {
 
     return result;
 }
+
+} // anonymous namespace
 
 void add_members_type(std::string& buffer, const osmium::RelationMemberList& members) {
     add_char(buffer, '{');

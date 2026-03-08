@@ -9,7 +9,9 @@ std::pair<std::string, std::string> split(const std::string& input, char delimit
     return std::make_pair(input.substr(0, pos), input.substr(pos + 1));
 }
 
-static void escape_char(std::string& buffer, const char c) noexcept {
+namespace {
+
+void escape_char(std::string& buffer, const char c) noexcept {
     const std::string_view backslash{"\\\\"};
     const std::string_view newline{"\\n"};
     const std::string_view cr{"\\r"};
@@ -32,6 +34,8 @@ static void escape_char(std::string& buffer, const char c) noexcept {
             buffer.append(&c, std::next(&c));
     }
 }
+
+} // anonymous namespace
 
 void append_pg_escaped(std::string& buffer, const char* str, std::size_t size) {
     while (size-- > 0 && *str != '\0') {
