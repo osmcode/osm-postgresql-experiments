@@ -1,6 +1,7 @@
 #pragma once
 
-struct Options {
+struct Options
+{
     bool verbose = false;
     bool with_history = false;
     bool with_primary_key = true;
@@ -9,4 +10,3 @@ struct Options {
     bool use_location_handler = false;
     bool assemble_areas = false;
 };
-

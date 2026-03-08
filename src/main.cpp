@@ -24,21 +24,23 @@ namespace po = boost::program_options;
 
 Options opts;
 
-class Handler : public osmium::handler::Handler {
+class Handler : public osmium::handler::Handler
+{
 
-    std::vector<std::unique_ptr<Table>>* m_tables;
+    std::vector<std::unique_ptr<Table>> *m_tables;
 
 public:
-
-    explicit Handler(std::vector<std::unique_ptr<Table>>* tables) :
-        m_tables(tables) {
+    explicit Handler(std::vector<std::unique_ptr<Table>> *tables)
+    : m_tables(tables)
+    {
     }
 
-    void osm_object(const osmium::OSMObject& object) {
+    void osm_object(osmium::OSMObject const &object)
+    {
         if (opts.filter_with_tags && object.tags().empty()) {
             return;
         }
-        for (auto& table : *m_tables) {
+        for (auto &table : *m_tables) {
             if (table->matches(object.type())) {
                 table->add_row(object, osmium::Timestamp{});
                 table->possible_flush();
@@ -46,8 +48,9 @@ public:
         }
     }
 
-    void changeset(const osmium::Changeset& changeset) {
-        for (auto& table : *m_tables) {
+    void changeset(osmium::Changeset const &changeset)
+    {
+        for (auto &table : *m_tables) {
             if (table->matches(changeset.type())) {
                 table->add_changeset_row(changeset);
                 table->possible_flush();
@@ -57,15 +60,18 @@ public:
 
 }; // class Handler
 
-class DiffHandler : public osmium::diff_handler::DiffHandler {
+class DiffHandler : public osmium::diff_handler::DiffHandler
+{
 
-    std::vector<std::unique_ptr<Table>>* m_tables;
+    std::vector<std::unique_ptr<Table>> *m_tables;
 
-    void osm_object(const osmium::OSMObject& object, const osmium::Timestamp next_version_timestamp) {
+    void osm_object(osmium::OSMObject const &object,
+                    osmium::Timestamp const next_version_timestamp)
+    {
         if (opts.filter_with_tags && object.tags().empty()) {
             return;
         }
-        for (auto& table : *m_tables) {
+        for (auto &table : *m_tables) {
             if (table->matches(object.type())) {
                 table->add_row(object, next_version_timestamp);
                 table->possible_flush();
@@ -74,12 +80,13 @@ class DiffHandler : public osmium::diff_handler::DiffHandler {
     }
 
 public:
-
-    explicit DiffHandler(std::vector<std::unique_ptr<Table>>* tables) :
-        m_tables(tables) {
+    explicit DiffHandler(std::vector<std::unique_ptr<Table>> *tables)
+    : m_tables(tables)
+    {
     }
 
-    void node(const osmium::DiffNode& dnode) {
+    void node(osmium::DiffNode const &dnode)
+    {
         osmium::Timestamp timestamp;
         if (!dnode.last()) {
             timestamp = dnode.next().timestamp();
@@ -87,7 +94,8 @@ public:
         osm_object(dnode.curr(), timestamp);
     }
 
-    void way(const osmium::DiffWay& dway) {
+    void way(osmium::DiffWay const &dway)
+    {
         osmium::Timestamp timestamp;
         if (!dway.last()) {
             timestamp = dway.next().timestamp();
@@ -95,7 +103,8 @@ public:
         osm_object(dway.curr(), timestamp);
     }
 
-    void relation(const osmium::DiffRelation& drelation) {
+    void relation(osmium::DiffRelation const &drelation)
+    {
         osmium::Timestamp timestamp;
         if (!drelation.last()) {
             timestamp = drelation.next().timestamp();
@@ -107,21 +116,19 @@ public:
 
 namespace {
 
-void parse_command_line(int argc, char* argv[], std::string& input_filename, std::vector<std::unique_ptr<Table>>& tables) {
+void parse_command_line(int argc, char *argv[], std::string &input_filename,
+                        std::vector<std::unique_ptr<Table>> &tables)
+{
     po::options_description desc{"OPTIONS"};
 
-    desc.add_options()
-        ("filter,f", po::value<std::vector<std::string>>(), "Filter")
-        ("help,h", "Show usage help")
-        ("verbose,v", "Set verbose mode")
-        ("with-history,H", "With history")
-    ;
+    desc.add_options()("filter,f", po::value<std::vector<std::string>>(),
+                       "Filter")("help,h", "Show usage help")(
+        "verbose,v", "Set verbose mode")("with-history,H", "With history");
 
     po::options_description hidden;
-    hidden.add_options()
-        ("input-filename", po::value<std::string>(), "Input file")
-        ("tables", po::value<std::vector<std::string>>(), "Output tables")
-    ;
+    hidden.add_options()("input-filename", po::value<std::string>(),
+                         "Input file")(
+        "tables", po::value<std::vector<std::string>>(), "Output tables");
 
     po::positional_options_description positional;
     positional.add("input-filename", 1);
@@ -131,18 +138,24 @@ void parse_command_line(int argc, char* argv[], std::string& input_filename, std
     all.add(desc).add(hidden);
 
     po::variables_map vm;
-    po::store(po::command_line_parser(argc, argv).options(all).positional(positional).run(), vm);
+    po::store(po::command_line_parser(argc, argv)
+                  .options(all)
+                  .positional(positional)
+                  .run(),
+              vm);
     po::notify(vm);
 
     if (vm.count("help")) {
-        std::cout << "Usage: " << argv[0] << " [OPTIONS] OSMFILE OUTPUT-TABLE...\n\n";
+        std::cout << "Usage: " << argv[0]
+                  << " [OPTIONS] OSMFILE OUTPUT-TABLE...\n\n";
         std::cout << "OUTPUT-TABLE: Format: [FILENAME]=[STREAM]%[COLUMNS]\n";
         std::cout << "  FILENAME - output filename (leave empty for STDOUT)\n";
         std::cout << "  STREAM   - one of the following:\n";
 
         std::cout << print_streams();
 
-        std::cout << "  COLUMNS  - columns for this table (uses default when empty)\n";
+        std::cout << "  COLUMNS  - columns for this table (uses default when "
+                     "empty)\n";
         std::cout << '\n';
         std::cout << desc;
         std::exit(0); // NOLINT(concurrency-mt-unsafe)
@@ -157,12 +170,13 @@ void parse_command_line(int argc, char* argv[], std::string& input_filename, std
     }
 
     if (vm.count("filter")) {
-        const auto filters = vm["filter"].as<std::vector<std::string>>();
-        for (const auto& filter : filters) {
+        auto const filters = vm["filter"].as<std::vector<std::string>>();
+        for (auto const &filter : filters) {
             if (filter == "with-tags") {
                 opts.filter_with_tags = true;
             } else {
-                std::cerr << "Warning! Unknown filter option: " << filter << '\n';
+                std::cerr << "Warning! Unknown filter option: " << filter
+                          << '\n';
             }
         }
     }
@@ -172,23 +186,28 @@ void parse_command_line(int argc, char* argv[], std::string& input_filename, std
     }
 
     if (vm.count("tables")) {
-        for (const auto& table_config : vm["tables"].as<std::vector<std::string>>()) {
+        for (auto const &table_config :
+             vm["tables"].as<std::vector<std::string>>()) {
             tables.emplace_back(create_table(opts, table_config));
-            const auto& new_table = *tables.back();
+            auto const &new_table = *tables.back();
             if (!new_table.filename().empty()) {
                 new_table.sql_data_definition();
             }
-            if (new_table.column_flags() & sql_column_config_flags::location_store) {
+            if (new_table.column_flags() &
+                sql_column_config_flags::location_store) {
                 opts.use_location_handler = true;
             }
-            if (new_table.column_flags() & sql_column_config_flags::assemble_areas) {
+            if (new_table.column_flags() &
+                sql_column_config_flags::assemble_areas) {
                 opts.assemble_areas = true;
             }
-            if (new_table.column_flags() & sql_column_config_flags::time_range) {
+            if (new_table.column_flags() &
+                sql_column_config_flags::time_range) {
                 opts.use_diff_handler = true;
             }
             if (opts.use_location_handler && opts.use_diff_handler) {
-                throw std::runtime_error{"Can't use time ranges and geometries together"};
+                throw std::runtime_error{
+                    "Can't use time ranges and geometries together"};
             }
         }
     } else {
@@ -198,16 +217,17 @@ void parse_command_line(int argc, char* argv[], std::string& input_filename, std
 
 } // anonymous namespace
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[])
+{
     std::vector<std::unique_ptr<Table>> tables;
     std::string input_filename{"-"};
 
     try {
         parse_command_line(argc, argv, input_filename, tables);
-    } catch (const boost::program_options::error& e) {
+    } catch (boost::program_options::error const &e) {
         std::cerr << "Error parsing command line: " << e.what() << '\n';
         return 2;
-    } catch (const std::exception& e) {
+    } catch (std::exception const &e) {
         std::cerr << e.what() << '\n';
         return 2;
     }
@@ -225,24 +245,26 @@ int main(int argc, char* argv[]) {
 
     vout << "Tables:\n";
 
-    osmium::osm_entity_bits::type read_entities = opts.use_location_handler ?
-        osmium::osm_entity_bits::node : osmium::osm_entity_bits::nothing;
-    for (const auto& table : tables) {
+    osmium::osm_entity_bits::type read_entities =
+        opts.use_location_handler ? osmium::osm_entity_bits::node
+                                  : osmium::osm_entity_bits::nothing;
+    for (auto const &table : tables) {
         if (table->read_entities() == osmium::osm_entity_bits::area) {
             read_entities |= osmium::osm_entity_bits::nwr;
         } else {
             read_entities |= table->read_entities();
         }
         vout << "  " << table->name() << ":\n";
-        vout << "    filename: " << table->filename()       << '\n';
-        vout << "    stream:   " << table->stream_name()    << '\n';
+        vout << "    filename: " << table->filename() << '\n';
+        vout << "    stream:   " << table->stream_name() << '\n';
         vout << "    columns:  " << table->columns_string() << '\n';
     }
 
     // Normally a "users" table is only filled with the users seen in the
     // other tables that are specified. But if the "users" table is the only
     // one, we export all users.
-    if (tables.size() == 1 && dynamic_cast<UsersTable*>(tables.front().get())) {
+    if (tables.size() == 1 &&
+        dynamic_cast<UsersTable *>(tables.front().get())) {
         read_entities = osmium::osm_entity_bits::all;
     }
 
@@ -256,7 +278,7 @@ int main(int argc, char* argv[]) {
 
         vout << "Transforming data...\n";
 
-        const osmium::io::File input_file{input_filename};
+        osmium::io::File const input_file{input_filename};
 
         if (opts.use_diff_handler) {
             DiffHandler handler{&tables};
@@ -264,24 +286,32 @@ int main(int argc, char* argv[]) {
             osmium::apply_diff(reader, handler);
             reader.close();
         } else {
-            using index_type = osmium::index::map::FlexMem<osmium::unsigned_object_id_type, osmium::Location>;
-            using location_handler_type = osmium::handler::NodeLocationsForWays<index_type>;
+            using index_type =
+                osmium::index::map::FlexMem<osmium::unsigned_object_id_type,
+                                            osmium::Location>;
+            using location_handler_type =
+                osmium::handler::NodeLocationsForWays<index_type>;
             Handler handler{&tables};
             if (opts.assemble_areas) {
-                const osmium::area::Assembler::config_type assembler_config;
-                osmium::area::MultipolygonManager<osmium::area::Assembler> mp_manager{assembler_config};
+                osmium::area::Assembler::config_type const assembler_config;
+                osmium::area::MultipolygonManager<osmium::area::Assembler>
+                    mp_manager{assembler_config};
                 vout << "First pass reading relations...\n";
                 osmium::relations::read_relations(input_file, mp_manager);
                 vout << "First pass done.\n";
-                osmium::relations::print_used_memory(std::cerr, mp_manager.used_memory());
+                osmium::relations::print_used_memory(std::cerr,
+                                                     mp_manager.used_memory());
                 index_type index;
                 location_handler_type location_handler{index};
                 location_handler.ignore_errors();
                 vout << "Second pass...\n";
                 osmium::io::Reader reader{input_file, read_entities};
-                osmium::apply(reader, location_handler, mp_manager.handler([&handler](const osmium::memory::Buffer& buffer) {
-                    osmium::apply(buffer, handler);
-                }));
+                osmium::apply(
+                    reader, location_handler,
+                    mp_manager.handler(
+                        [&handler](osmium::memory::Buffer const &buffer) {
+                            osmium::apply(buffer, handler);
+                        }));
                 reader.close();
                 vout << "Second pass done.\n";
             } else if (opts.use_location_handler) {
@@ -297,16 +327,15 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        for (auto& table : tables) {
+        for (auto &table : tables) {
             table->flush();
             table->close();
         }
 
-    } catch (const std::exception& e) {
+    } catch (std::exception const &e) {
         std::cerr << e.what() << '\n';
         return 1;
     }
 
     vout << "Done.\n";
 }
-

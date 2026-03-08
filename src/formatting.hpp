@@ -5,25 +5,27 @@
 #include <osmium/osm/way.hpp>
 
 #ifndef RAPIDJSON_HAS_STDSTRING
-# define RAPIDJSON_HAS_STDSTRING 1
+#define RAPIDJSON_HAS_STDSTRING 1
 #endif
-#include <rapidjson/writer.h>
 #include <rapidjson/stringbuffer.h>
+#include <rapidjson/writer.h>
 
 #include <string>
 
-void add_null(std::string& buffer);
+void add_null(std::string &buffer);
 
-void add_char(std::string& buffer, char c);
+void add_char(std::string &buffer, char c);
 
-void add_bool(std::string& buffer, bool value, char true_value = 't', char false_value = 'f');
+void add_bool(std::string &buffer, bool value, char true_value = 't',
+              char false_value = 'f');
 
-void add_tags_json(std::string& buffer, const osmium::TagList& tags);
+void add_tags_json(std::string &buffer, osmium::TagList const &tags);
 
-void add_tags_hstore(std::string& buffer, const osmium::TagList& tags);
+void add_tags_hstore(std::string &buffer, osmium::TagList const &tags);
 
-void add_way_nodes_array(std::string& buffer, const osmium::WayNodeList& nodes);
+void add_way_nodes_array(std::string &buffer, osmium::WayNodeList const &nodes);
 
-void add_members_type(std::string& buffer, const osmium::RelationMemberList& members);
-void add_members_json(std::string& buffer, const osmium::RelationMemberList& members);
-
+void add_members_type(std::string &buffer,
+                      osmium::RelationMemberList const &members);
+void add_members_json(std::string &buffer,
+                      osmium::RelationMemberList const &members);

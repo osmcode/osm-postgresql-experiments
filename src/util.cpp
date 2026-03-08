@@ -1,8 +1,10 @@
 
 #include "util.hpp"
 
-std::pair<std::string, std::string> split(const std::string& input, char delimiter, const std::string& default_2nd) {
-    const auto pos = input.find_first_of(delimiter);
+std::pair<std::string, std::string>
+split(std::string const &input, char delimiter, std::string const &default_2nd)
+{
+    auto const pos = input.find_first_of(delimiter);
     if (pos == std::string::npos) {
         return std::make_pair(input, default_2nd);
     }
@@ -11,47 +13,51 @@ std::pair<std::string, std::string> split(const std::string& input, char delimit
 
 namespace {
 
-void escape_char(std::string& buffer, const char c) noexcept {
-    const std::string_view backslash{"\\\\"};
-    const std::string_view newline{"\\n"};
-    const std::string_view carriage_return{"\\r"};
-    const std::string_view tab{"\\t"};
+void escape_char(std::string &buffer, char const c) noexcept
+{
+    std::string_view const backslash{"\\\\"};
+    std::string_view const newline{"\\n"};
+    std::string_view const carriage_return{"\\r"};
+    std::string_view const tab{"\\t"};
 
     switch (c) {
-        case '\\':
-            buffer.append(backslash.begin(), backslash.end());
-            break;
-        case '\n':
-            buffer.append(newline.begin(), newline.end());
-            break;
-        case '\r':
-            buffer.append(carriage_return.begin(), carriage_return.end());
-            break;
-        case '\t':
-            buffer.append(tab.begin(), tab.end());
-            break;
-        default:
-            buffer.append(&c, std::next(&c));
+    case '\\':
+        buffer.append(backslash.begin(), backslash.end());
+        break;
+    case '\n':
+        buffer.append(newline.begin(), newline.end());
+        break;
+    case '\r':
+        buffer.append(carriage_return.begin(), carriage_return.end());
+        break;
+    case '\t':
+        buffer.append(tab.begin(), tab.end());
+        break;
+    default:
+        buffer.append(&c, std::next(&c));
     }
 }
 
 } // anonymous namespace
 
-void append_pg_escaped(std::string& buffer, const char* str, std::size_t size) {
+void append_pg_escaped(std::string &buffer, char const *str, std::size_t size)
+{
     while (size-- > 0 && *str != '\0') {
         escape_char(buffer, *str);
         ++str;
     }
 }
 
-void append_pg_escaped(std::string& buffer, const char* str) {
+void append_pg_escaped(std::string &buffer, char const *str)
+{
     while (*str != '\0') {
         escape_char(buffer, *str);
         ++str;
     }
 }
 
-std::string list_entities(const osmium::osm_entity_bits::type entities) {
+std::string list_entities(osmium::osm_entity_bits::type const entities)
+{
     std::string output;
 
     if (entities & osmium::osm_entity_bits::node) {
@@ -73,7 +79,7 @@ std::string list_entities(const osmium::osm_entity_bits::type entities) {
     return output;
 }
 
-const char* yes_no(const bool choice) noexcept {
+char const *yes_no(bool const choice) noexcept
+{
     return choice ? "yes\n" : "no\n";
 }
-
