@@ -1,5 +1,5 @@
 ---
-Checks: '*,-altera-*,-android-cloexec-*,-cert-err58-cpp,-cppcoreguidelines-avoid-c-arrays,-cppcoreguidelines-avoid-magic-numbers,-cppcoreguidelines-owning-memory,-cppcoreguidelines-pro-bounds-array-to-pointer-decay,-cppcoreguidelines-pro-bounds-pointer-arithmetic,-cppcoreguidelines-pro-type-static-cast-downcast,-cppcoreguidelines-pro-type-vararg,-fuchsia-*,-google-readability-todo,-google-runtime-references,-hicpp-avoid-c-arrays,-hicpp-no-array-decay,-llvmlibc-*,-misc-include-cleaner,-modernize-avoid-c-arrays,-modernize-use-trailing-return-type,-readability-implicit-bool-conversion,-readability-magic-numbers'
+Checks: '*,-altera-*,-android-cloexec-*,-cert-err58-cpp,-cppcoreguidelines-avoid-c-arrays,-cppcoreguidelines-avoid-magic-numbers,-cppcoreguidelines-owning-memory,-cppcoreguidelines-pro-bounds-array-to-pointer-decay,-cppcoreguidelines-pro-bounds-pointer-arithmetic,-cppcoreguidelines-pro-type-static-cast-downcast,-cppcoreguidelines-pro-type-vararg,-fuchsia-*,-google-readability-todo,-google-runtime-references,-hicpp-avoid-c-arrays,-hicpp-no-array-decay,-llvmlibc-*,-misc-include-cleaner,-modernize-use-designated-initializers,-modernize-avoid-c-arrays,-modernize-use-trailing-return-type,-readability-function-cognitive-complexity,-readability-identifier-length,-readability-implicit-bool-conversion,-readability-magic-numbers'
 #
 #  For a list of check options, see:
 #  https://clang.llvm.org/extra/clang-tidy/checks/list.html
@@ -19,6 +19,7 @@ Checks: '*,-altera-*,-android-cloexec-*,-cert-err58-cpp,-cppcoreguidelines-avoid
 #    Alias for modernize-avoid-c-arrays.
 #
 #  cppcoreguidelines-avoid-magic-numbers
+#  readability-magic-numbers
 #    Generally good advice, but there are too many places where this is
 #    useful, for instance in tests.
 #
@@ -63,14 +64,21 @@ Checks: '*,-altera-*,-android-cloexec-*,-cert-err58-cpp,-cppcoreguidelines-avoid
 #    Makes sense for some array, but especially for char arrays using
 #    std::array isn't a good solution.
 #
+#  modernize-use-designated-initializers
+#    Often too verbose.
+#
 #  modernize-use-trailing-return-type
 #    I am not quite that modern.
 #
+#  readability-function-cognitive-complexity
+#    Not really complex, just long.
+#
+#  readability-identifier-length
+#    Generally not a bad idea, but there are many cases where short names
+#    for (local) vars are okay.
+#
 #  readability-implicit-bool-conversion
 #    I don't think this makes the code more readable.
-#
-#  readability-magic-numbers
-#    Alias for cppcoreguidelines-avoid-magic-numbers.
 #
 #WarningsAsErrors: '*'
 ...
