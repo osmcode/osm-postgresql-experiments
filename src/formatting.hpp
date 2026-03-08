@@ -4,12 +4,6 @@
 #include <osmium/osm/tag.hpp>
 #include <osmium/osm/way.hpp>
 
-#ifndef RAPIDJSON_HAS_STDSTRING
-#define RAPIDJSON_HAS_STDSTRING 1
-#endif
-#include <rapidjson/stringbuffer.h>
-#include <rapidjson/writer.h>
-
 #include <string>
 
 void add_null(std::string &buffer);

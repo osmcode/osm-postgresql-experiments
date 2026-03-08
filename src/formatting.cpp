@@ -1,6 +1,7 @@
 
 #include "formatting.hpp"
 
+#include "json-writer.hpp"
 #include "util.hpp"
 
 #include <format>
@@ -21,17 +22,17 @@ void add_bool(std::string &buffer, bool value, char true_value,
 
 void add_tags_json(std::string &buffer, osmium::TagList const &tags)
 {
-    rapidjson::StringBuffer stream;
-    rapidjson::Writer<rapidjson::StringBuffer> writer{stream};
+    json_writer writer;
 
-    writer.StartObject();
+    writer.start_object();
     for (auto const &tag : tags) {
-        writer.Key(tag.key());
-        writer.String(tag.value());
+        writer.key(tag.key());
+        writer.string(tag.value());
+        writer.next();
     }
-    writer.EndObject();
+    writer.end_object();
 
-    append_pg_escaped(buffer, stream.GetString(), stream.GetSize());
+    append_pg_escaped(buffer, writer.json().c_str());
 }
 
 namespace {
@@ -158,23 +159,25 @@ void add_members_type(std::string &buffer,
 void add_members_json(std::string &buffer,
                       osmium::RelationMemberList const &members)
 {
-    rapidjson::StringBuffer stream;
-    rapidjson::Writer<rapidjson::StringBuffer> writer{stream};
+    json_writer writer;
 
     char typebuffer[2] = "x";
-    writer.StartArray();
+    writer.start_array();
     for (auto const &member : members) {
-        writer.StartObject();
-        writer.Key("type");
+        writer.start_object();
+        writer.key("type");
         typebuffer[0] = osmium::item_type_to_char(member.type());
-        writer.String(typebuffer);
-        writer.Key("ref");
-        writer.Int64(member.ref());
-        writer.Key("role");
-        writer.String(member.role());
-        writer.EndObject();
+        writer.string(typebuffer);
+        writer.next();
+        writer.key("ref");
+        writer.number(member.ref());
+        writer.next();
+        writer.key("role");
+        writer.string(member.role());
+        writer.end_object();
+        writer.next();
     }
-    writer.EndArray();
+    writer.end_array();
 
-    append_pg_escaped(buffer, stream.GetString(), stream.GetSize());
+    append_pg_escaped(buffer, writer.json().c_str());
 }
