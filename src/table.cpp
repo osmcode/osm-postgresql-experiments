@@ -109,8 +109,8 @@ struct timestamp_range {
 template <>
 struct std::formatter<timestamp_range> {
 
-    constexpr auto parse(std::format_parse_context& ctx) {
-        for (auto it = ctx.begin(); it != ctx.end(); ++it) {
+    static constexpr auto parse(std::format_parse_context& ctx) {
+        for (const auto *it = ctx.begin(); it != ctx.end(); ++it) {
             if (*it == '}') {
                 return it;
             }
@@ -119,7 +119,7 @@ struct std::formatter<timestamp_range> {
         throw format_error("invalid format");
     }
 
-    auto format(const timestamp_range& range, std::format_context& ctx) const {
+    static auto format(const timestamp_range& range, std::format_context& ctx) {
         return format_to(
             ctx.out(),
             "[{},{})",
