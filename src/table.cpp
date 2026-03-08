@@ -133,8 +133,7 @@ template <>
 struct std::formatter<osmium::item_type> : std::formatter<char> {
 
     auto format(const osmium::item_type& type, std::format_context& ctx) const {
-        const char t = osmium::item_type_to_char(type);
-        return std::formatter<char>::format(t, ctx);
+        return std::formatter<char>::format(osmium::item_type_to_char(type), ctx);
     }
 
 };
@@ -152,9 +151,9 @@ std::string print_streams() {
 namespace {
 
 const stream_config_type& get_stream_config(const std::string& stream_string) {
-    for (const auto& c : stream_config) {
-        if (c.stream == stream_string) {
-            return c;
+    for (const auto& config : stream_config) {
+        if (config.stream == stream_string) {
+            return config;
         }
     }
 
@@ -162,9 +161,9 @@ const stream_config_type& get_stream_config(const std::string& stream_string) {
 }
 
 const column_config_type& get_column_config(const std::string& format_string) {
-    for (const auto& c : column_config) {
-        if (format_string == c.format_string) {
-            return c;
+    for (const auto& config : column_config) {
+        if (format_string == config.format_string) {
+            return config;
         }
     }
 

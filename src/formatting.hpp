@@ -16,7 +16,7 @@ void add_null(std::string& buffer);
 
 void add_char(std::string& buffer, char c);
 
-void add_bool(std::string& buffer, bool value, char tv = 't', char fv = 'f');
+void add_bool(std::string& buffer, bool value, char true_value = 't', char false_value = 'f');
 
 void add_tags_json(std::string& buffer, const osmium::TagList& tags);
 

@@ -14,7 +14,7 @@ namespace {
 void escape_char(std::string& buffer, const char c) noexcept {
     const std::string_view backslash{"\\\\"};
     const std::string_view newline{"\\n"};
-    const std::string_view cr{"\\r"};
+    const std::string_view carriage_return{"\\r"};
     const std::string_view tab{"\\t"};
 
     switch (c) {
@@ -25,7 +25,7 @@ void escape_char(std::string& buffer, const char c) noexcept {
             buffer.append(newline.begin(), newline.end());
             break;
         case '\r':
-            buffer.append(cr.begin(), cr.end());
+            buffer.append(carriage_return.begin(), carriage_return.end());
             break;
         case '\t':
             buffer.append(tab.begin(), tab.end());

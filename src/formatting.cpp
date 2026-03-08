@@ -13,12 +13,8 @@ void add_char(std::string& buffer, char c) {
     buffer.append(&c, std::next(&c));
 }
 
-void add_bool(std::string& buffer, bool value, char tv, char fv) {
-    if (value) {
-        add_char(buffer, tv);
-    } else {
-        add_char(buffer, fv);
-    }
+void add_bool(std::string& buffer, bool value, char true_value, char false_value) {
+    add_char(buffer, value ? true_value : false_value);
 }
 
 void add_tags_json(std::string& buffer, const osmium::TagList& tags) {
@@ -128,21 +124,21 @@ void add_members_type(std::string& buffer, const osmium::RelationMemberList& mem
     add_char(buffer, '{');
 
     bool delimiter = false;
-    for (const auto& rm : members) {
+    for (const auto& member : members) {
         if (delimiter) {
             add_char(buffer, ',');
         } else {
             delimiter = true;
         }
 
-        std::format_to(std::back_inserter(buffer), "\"({},{},", osmium::item_type_to_char(rm.type()), rm.ref());
-        if (needs_quoting(rm.role())) {
+        std::format_to(std::back_inserter(buffer), "\"({},{},", osmium::item_type_to_char(member.type()), member.ref());
+        if (needs_quoting(member.role())) {
             std::format_to(std::back_inserter(buffer), R"FOO(\\")FOO");
-            const auto escaped_role = escape_str(rm.role());
+            const auto escaped_role = escape_str(member.role());
             append_pg_escaped(buffer, escaped_role.c_str());
             std::format_to(std::back_inserter(buffer), R"FOO(\\")")FOO");
         } else {
-            std::format_to(std::back_inserter(buffer), "{})\"", rm.role());
+            std::format_to(std::back_inserter(buffer), "{})\"", member.role());
         }
     }
 
@@ -155,15 +151,15 @@ void add_members_json(std::string& buffer, const osmium::RelationMemberList& mem
 
     char typebuffer[2] = "x";
     writer.StartArray();
-    for (const auto& rm : members) {
+    for (const auto& member : members) {
         writer.StartObject();
         writer.Key("type");
-        typebuffer[0] = osmium::item_type_to_char(rm.type());
+        typebuffer[0] = osmium::item_type_to_char(member.type());
         writer.String(typebuffer);
         writer.Key("ref");
-        writer.Int64(rm.ref());
+        writer.Int64(member.ref());
         writer.Key("role");
-        writer.String(rm.role());
+        writer.String(member.role());
         writer.EndObject();
     }
     writer.EndArray();

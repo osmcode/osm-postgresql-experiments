@@ -80,27 +80,27 @@ public:
     }
 
     void node(const osmium::DiffNode& dnode) {
-        osmium::Timestamp ts;
+        osmium::Timestamp timestamp;
         if (!dnode.last()) {
-            ts = dnode.next().timestamp();
+            timestamp = dnode.next().timestamp();
         }
-        osm_object(dnode.curr(), ts);
+        osm_object(dnode.curr(), timestamp);
     }
 
     void way(const osmium::DiffWay& dway) {
-        osmium::Timestamp ts;
+        osmium::Timestamp timestamp;
         if (!dway.last()) {
-            ts = dway.next().timestamp();
+            timestamp = dway.next().timestamp();
         }
-        osm_object(dway.curr(), ts);
+        osm_object(dway.curr(), timestamp);
     }
 
     void relation(const osmium::DiffRelation& drelation) {
-        osmium::Timestamp ts;
+        osmium::Timestamp timestamp;
         if (!drelation.last()) {
-            ts = drelation.next().timestamp();
+            timestamp = drelation.next().timestamp();
         }
-        osm_object(drelation.curr(), ts);
+        osm_object(drelation.curr(), timestamp);
     }
 
 }; // class DiffHandler
@@ -157,12 +157,12 @@ void parse_command_line(int argc, char* argv[], std::string& input_filename, std
     }
 
     if (vm.count("filter")) {
-        const auto filter = vm["filter"].as<std::vector<std::string>>();
-        for (const auto& f : filter) {
-            if (f == "with-tags") {
+        const auto filters = vm["filter"].as<std::vector<std::string>>();
+        for (const auto& filter : filters) {
+            if (filter == "with-tags") {
                 opts.filter_with_tags = true;
             } else {
-                std::cerr << "Warning! Unknown filter option: " << f << '\n';
+                std::cerr << "Warning! Unknown filter option: " << filter << '\n';
             }
         }
     }
