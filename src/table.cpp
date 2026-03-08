@@ -223,13 +223,15 @@ Table::Table(std::string filename, const stream_config_type& stream_config, std:
 }
 
 void Table::flush() {
-    if (m_buffer.size() > 0) {
-        const auto written = ::write(m_fd, m_buffer.data(), m_buffer.size());
-        if (written < 0 || static_cast<std::size_t>(written) != m_buffer.size()) {
-            throw std::runtime_error{"write error"};
-        }
-        m_buffer.clear();
+    if (m_buffer.empty()) {
+        return;
     }
+
+    const auto written = ::write(m_fd, m_buffer.data(), m_buffer.size());
+    if (written < 0 || static_cast<std::size_t>(written) != m_buffer.size()) {
+        throw std::runtime_error{"write error"};
+    }
+    m_buffer.clear();
 }
 
 void Table::close() {
