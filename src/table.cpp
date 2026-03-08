@@ -923,6 +923,30 @@ std::string ChangesetsTable::sql_primary_key() const
     return primary_key(name(), "id");
 }
 
+namespace {
+
+std::string format_box(osmium::Box const &bounds,
+                       osmium::geom::WKBFactory<> factory)
+{
+    constexpr std::size_t num_points_in_box = 5;
+
+    std::array<osmium::NodeRef, num_points_in_box> const locations = {
+        osmium::NodeRef{0, bounds.bottom_left()},
+        osmium::NodeRef{0, osmium::Location{bounds.bottom_left().x(),
+                                            bounds.top_right().y()}},
+        osmium::NodeRef{0, bounds.top_right()},
+        osmium::NodeRef{0, osmium::Location{bounds.top_right().x(),
+                                            bounds.bottom_left().y()}},
+        osmium::NodeRef{0, bounds.bottom_left()},
+    };
+
+    factory.polygon_start();
+    factory.fill_polygon(locations.cbegin(), locations.cend());
+    return factory.polygon_finish(num_points_in_box);
+}
+
+} // anonymous namespace
+
 void ChangesetsTable::add_changeset_row(osmium::Changeset const &changeset)
 {
     for (auto const &column : m_columns) {
@@ -1063,22 +1087,7 @@ void ChangesetsTable::add_changeset_row(osmium::Changeset const &changeset)
             break;
         case column_type::bounds_polygon:
             if (changeset.bounds().valid()) {
-                auto const &b = changeset.bounds();
-                constexpr std::size_t num_points_in_box = 5;
-                std::array<osmium::NodeRef, num_points_in_box> const locations =
-                    {
-                        osmium::NodeRef{0, b.bottom_left()},
-                        osmium::NodeRef{0, osmium::Location{b.bottom_left().x(),
-                                                            b.top_right().y()}},
-                        osmium::NodeRef{0, b.top_right()},
-                        osmium::NodeRef{0,
-                                        osmium::Location{b.top_right().x(),
-                                                         b.bottom_left().y()}},
-                        osmium::NodeRef{0, b.bottom_left()},
-                    };
-                m_factory.polygon_start();
-                m_factory.fill_polygon(locations.cbegin(), locations.cend());
-                m_buffer.append(m_factory.polygon_finish(num_points_in_box));
+                m_buffer.append(format_box(changeset.bounds(), m_factory));
             } else {
                 add_null(m_buffer);
             }
