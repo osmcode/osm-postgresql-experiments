@@ -219,7 +219,8 @@ Table::Table(std::string filename, const stream_config_type& stream_config, std:
 
     setup_columns();
 
-    m_buffer.reserve(1000 * 1024);
+    constexpr std::size_t min_buffer_size = 1024'000;
+    m_buffer.reserve(min_buffer_size);
 }
 
 void Table::flush() {
@@ -351,6 +352,7 @@ inline unsigned int lat2y(double lat) noexcept {
    return static_cast<unsigned int>(std::round((lat + 90.0) * 65535.0 / 180.0));
 }
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 inline unsigned int xy2tile(unsigned int x, unsigned int y) noexcept {
    unsigned int tile = 0;
 

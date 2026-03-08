@@ -145,7 +145,7 @@ void parse_command_line(int argc, char* argv[], std::string& input_filename, std
         std::cout << "  COLUMNS  - columns for this table (uses default when empty)\n";
         std::cout << '\n';
         std::cout << desc;
-        std::exit(0);
+        std::exit(0); // NOLINT(concurrency-mt-unsafe)
     }
 
     if (vm.count("verbose")) {
@@ -279,7 +279,7 @@ int main(int argc, char* argv[]) {
                 location_handler.ignore_errors();
                 vout << "Second pass...\n";
                 osmium::io::Reader reader{input_file, read_entities};
-                osmium::apply(reader, location_handler, mp_manager.handler([&handler](osmium::memory::Buffer&& buffer) {
+                osmium::apply(reader, location_handler, mp_manager.handler([&handler](const osmium::memory::Buffer& buffer) {
                     osmium::apply(buffer, handler);
                 }));
                 reader.close();
