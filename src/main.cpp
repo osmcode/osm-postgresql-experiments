@@ -26,11 +26,11 @@ Options opts;
 
 class Handler : public osmium::handler::Handler {
 
-    std::vector<std::unique_ptr<Table>>& m_tables;
+    std::vector<std::unique_ptr<Table>>* m_tables;
 
 public:
 
-    explicit Handler(std::vector<std::unique_ptr<Table>>& tables) :
+    explicit Handler(std::vector<std::unique_ptr<Table>>* tables) :
         m_tables(tables) {
     }
 
@@ -38,7 +38,7 @@ public:
         if (opts.filter_with_tags && object.tags().empty()) {
             return;
         }
-        for (auto& table : m_tables) {
+        for (auto& table : *m_tables) {
             if (table->matches(object.type())) {
                 table->add_row(object, osmium::Timestamp{});
                 table->possible_flush();
@@ -47,7 +47,7 @@ public:
     }
 
     void changeset(const osmium::Changeset& changeset) {
-        for (auto& table : m_tables) {
+        for (auto& table : *m_tables) {
             if (table->matches(changeset.type())) {
                 table->add_changeset_row(changeset);
                 table->possible_flush();
@@ -59,13 +59,13 @@ public:
 
 class DiffHandler : public osmium::diff_handler::DiffHandler {
 
-    std::vector<std::unique_ptr<Table>>& m_tables;
+    std::vector<std::unique_ptr<Table>>* m_tables;
 
     void osm_object(const osmium::OSMObject& object, const osmium::Timestamp next_version_timestamp) {
         if (opts.filter_with_tags && object.tags().empty()) {
             return;
         }
-        for (auto& table : m_tables) {
+        for (auto& table : *m_tables) {
             if (table->matches(object.type())) {
                 table->add_row(object, next_version_timestamp);
                 table->possible_flush();
@@ -75,7 +75,7 @@ class DiffHandler : public osmium::diff_handler::DiffHandler {
 
 public:
 
-    explicit DiffHandler(std::vector<std::unique_ptr<Table>>& tables) :
+    explicit DiffHandler(std::vector<std::unique_ptr<Table>>* tables) :
         m_tables(tables) {
     }
 
@@ -259,14 +259,14 @@ int main(int argc, char* argv[]) {
         const osmium::io::File input_file{input_filename};
 
         if (opts.use_diff_handler) {
-            DiffHandler handler{tables};
+            DiffHandler handler{&tables};
             osmium::io::Reader reader{input_file, read_entities};
             osmium::apply_diff(reader, handler);
             reader.close();
         } else {
             using index_type = osmium::index::map::FlexMem<osmium::unsigned_object_id_type, osmium::Location>;
             using location_handler_type = osmium::handler::NodeLocationsForWays<index_type>;
-            Handler handler{tables};
+            Handler handler{&tables};
             if (opts.assemble_areas) {
                 const osmium::area::Assembler::config_type assembler_config;
                 osmium::area::MultipolygonManager<osmium::area::Assembler> mp_manager{assembler_config};
