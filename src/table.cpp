@@ -309,7 +309,7 @@ void Table::sql_data_definition() const {
 
     sql += '\n';
 
-    std::string sqlfilename{m_path + "/" + m_name + ".sql"};
+    const std::string sqlfilename{m_path + "/" + m_name + ".sql"};
     try {
         std::ofstream sqlfile{sqlfilename};
         sqlfile.exceptions(~std::ofstream::goodbit);
@@ -875,7 +875,7 @@ void ChangesetsTable::add_changeset_row(const osmium::Changeset& changeset) {
             case column_type::bounds_polygon:
                 if (changeset.bounds().valid()) {
                     const auto& b = changeset.bounds();
-                    std::array<osmium::NodeRef, 5> locations = {
+                    const std::array<osmium::NodeRef, 5> locations = {
                         osmium::NodeRef{0, b.bottom_left()},
                         osmium::NodeRef{0, osmium::Location{b.bottom_left().x(), b.top_right().y()}},
                         osmium::NodeRef{0, b.top_right()},

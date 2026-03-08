@@ -252,7 +252,7 @@ int main(int argc, char* argv[]) {
 
         vout << "Transforming data...\n";
 
-        osmium::io::File input_file{input_filename};
+        const osmium::io::File input_file{input_filename};
 
         if (opts.use_diff_handler) {
             DiffHandler handler{tables};
@@ -264,7 +264,7 @@ int main(int argc, char* argv[]) {
             using location_handler_type = osmium::handler::NodeLocationsForWays<index_type>;
             Handler handler{tables};
             if (opts.assemble_areas) {
-                osmium::area::Assembler::config_type assembler_config;
+                const osmium::area::Assembler::config_type assembler_config;
                 osmium::area::MultipolygonManager<osmium::area::Assembler> mp_manager{assembler_config};
                 vout << "First pass reading relations...\n";
                 osmium::relations::read_relations(input_file, mp_manager);
