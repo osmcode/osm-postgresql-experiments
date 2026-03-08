@@ -895,7 +895,8 @@ void ChangesetsTable::add_changeset_row(const osmium::Changeset& changeset) {
             case column_type::bounds_polygon:
                 if (changeset.bounds().valid()) {
                     const auto& b = changeset.bounds();
-                    const std::array<osmium::NodeRef, 5> locations = {
+                    constexpr std::size_t num_points_in_box = 5;
+                    const std::array<osmium::NodeRef, num_points_in_box> locations = {
                         osmium::NodeRef{0, b.bottom_left()},
                         osmium::NodeRef{0, osmium::Location{b.bottom_left().x(), b.top_right().y()}},
                         osmium::NodeRef{0, b.top_right()},
@@ -904,7 +905,7 @@ void ChangesetsTable::add_changeset_row(const osmium::Changeset& changeset) {
                     };
                     m_factory.polygon_start();
                     m_factory.fill_polygon(locations.cbegin(), locations.cend());
-                    m_buffer.append(m_factory.polygon_finish(5));
+                    m_buffer.append(m_factory.polygon_finish(num_points_in_box));
                 } else {
                     add_null(m_buffer);
                 }
